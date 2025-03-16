@@ -1,5 +1,5 @@
-<p align="center">
-  <img src="src/assets/Aulendur Block Logo and Name.png" alt="Aulendur Logo" width="300">
+<p align="left">
+  <img src="src/assets/Aulendur Block Logo and Name.png" alt="Aulendur Logo" width="150">
 </p>
 
 # LLM LoreSmith
