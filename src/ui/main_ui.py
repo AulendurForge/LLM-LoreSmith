@@ -12,6 +12,7 @@ from .dataset_ui import dataset_ui
 from .fine_tuning_ui import fine_tuning_ui
 from .metadata_ui import metadata_ui
 from .schema_ui import schema_ui
+from .workflow_ui import workflow_ui
 from ..config.config_manager import config
 
 
@@ -36,6 +37,9 @@ class MainUI:
             gr.Markdown("Fine-tune large language models with credible documents")
             
             with gr.Tabs() as tabs:
+                with gr.TabItem("Guided Workflow", id="workflow"):
+                    workflow_ui.create_ui_block()
+                
                 with gr.TabItem("Documents"):
                     document_ui.create_ui_block()
                 
