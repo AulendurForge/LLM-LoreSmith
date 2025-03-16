@@ -1,0 +1,6 @@
+---
+description: LLM Agent will consistently review the development plan and update the plan to reflect the projects current progress and evaluate what the next best steps are without leaving behind tech debt
+globs: DocumentPlan.md
+alwaysApply: true
+---
+LLM Agent will consistently review the development plan and update the plan to reflect the projects current progress and evaluate what the next best steps are without leaving behind tech debt. The development approach should never be to cut corners or simply to take shortcuts that check of development plan boxes in ways that do not actually deliver value to the user or stability for the application. Development Plan if found [DevelopmentPlan.md](mdc:DevelopmentPlan.md)

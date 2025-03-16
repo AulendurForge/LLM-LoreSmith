@@ -1,0 +1,12 @@
+---
+description: When creating or updating files and managing large file sizes
+globs: 
+alwaysApply: true
+---
+When creating or updating files, always make sure to put detailed comment descriptions at the top of the files regarding the prupose of the file and what aspects of the program are the focus of the file you are creating or updating.
+
+Always make sure to put clear and detailed comments throughout your code. 
+
+When you encounter a file that is incredibly large and might need to be refactored into several smaller files to follow good development practices, notify the user and make suggestions about how you think the refactoring should be done.
+
+When possible, you should always avoid ever creating files that are so large so that you do not have to refactor later.

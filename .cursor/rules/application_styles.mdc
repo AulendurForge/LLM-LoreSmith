@@ -1,0 +1,6 @@
+---
+description: When managing frontend application styling and formatting, always be sure to review the main style and formatting files to keep styles as centrally managed as possible
+globs: /frontend
+alwaysApply: true
+---
+When managing frontend application styling and formatting, always be sure to review the main style and formatting files to keep styles as centrally managed as possible. [App.css](mdc:frontend/src/styles/App.css) [App.tsx](mdc:frontend/src/App.tsx) [index.css](mdc:frontend/src/styles/index.css) [Footer.tsx](mdc:frontend/src/components/common/Footer.tsx) [Header.tsx](mdc:frontend/src/components/common/Header.tsx) [MainLayout.tsx](mdc:frontend/src/layouts/MainLayout.tsx)

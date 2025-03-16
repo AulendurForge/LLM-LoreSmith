@@ -1,0 +1,176 @@
+services:
+  # Frontend React Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../infrastructure/docker/frontend/Dockerfile
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=http://localhost:5000/api
+    depends_on:
+      - backend
+    networks:
+      - loresmith-network
+
+  # Backend API Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/docker/backend/Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/loresmith
+      - VLLM_SERVICE_URL=http://vllm-service:8000
+      - JWT_SECRET=dev_secret_key_change_in_production
+      - CORS_ORIGINS=http://localhost:3000
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - loresmith-network
+
+  # vLLM Service for Model Training and Inference
+  vllm-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/vllm/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./vllm-service:/app
+      - ./data/models:/app/models
+    environment:
+      - MODEL_DIR=/app/models
+      - DEFAULT_MODEL=meta-llama/Llama-2-7b-chat-hf  # The model to load (will download if not present)
+      - CUDA_VISIBLE_DEVICES=0  # Specify which GPU to use (0 = first GPU)
+      - CUDA_HOME=/usr/local/cuda  # Set CUDA home in container
+      # Optional performance tuning:
+      # - VLLM_MAX_MODEL_LEN=8192  # Adjust model context length
+      # - VLLM_GPU_MEMORY_UTILIZATION=0.9  # Control GPU memory usage (0.0-1.0)
+    # GPU configuration for Docker - requires NVIDIA Container Toolkit
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # Healthcheck to verify GPU access
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import torch; print(torch.cuda.is_available())' | grep -q True || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - loresmith-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=loresmith
+    networks:
+      - loresmith-network
+
+  # Redis for Caching and Job Queue
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - loresmith-network
+
+  # Prometheus for Metrics Collection
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/monitoring/prometheus:/etc/prometheus
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    networks:
+      - loresmith-network
+
+  # Grafana for Visualization
+  grafana:
+    image: grafana/grafana:10.2.0
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./infrastructure/monitoring/grafana:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    networks:
+      - loresmith-network
+
+  # ELK Stack for Logging
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.4
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    networks:
+      - loresmith-network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.10.4
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - loresmith-network
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.10.4
+    volumes:
+      - ./infrastructure/monitoring/logstash/pipeline:/usr/share/logstash/pipeline
+    depends_on:
+      - elasticsearch
+    networks:
+      - loresmith-network
+
+volumes:
+  postgres-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:
+  elasticsearch-data:
+
+networks:
+  loresmith-network:
+    driver: bridge

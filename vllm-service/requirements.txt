@@ -1,0 +1,16 @@
+# Core dependencies
+torch==2.3.0
+vllm==0.4.2
+transformers==4.40.0
+accelerate==0.26.1
+fastapi==0.109.0
+uvicorn==0.25.0
+pydantic==2.5.3
+python-dotenv==1.0.0
+
+# Monitoring
+prometheus_client==0.18.0
+
+# Utilities
+requests==2.31.0
+tqdm==4.66.1 

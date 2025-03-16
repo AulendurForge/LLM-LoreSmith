@@ -1,0 +1,6 @@
+---
+description: When building in aspects of the application that will manage serving an LLM to the user, managing LLMs, training or tuning LLMs, or building out the functionliaty of the applications LLM agent assistance
+globs: 
+alwaysApply: true
+---
+When building in aspects of the application that will manage serving an LLM to the user, managing LLMs, training or tuning LLMs, or building out the functionliaty of the applications LLM agent assistance, refernce the online documentation for vLLM @https://github.com/vllm-project/vllm

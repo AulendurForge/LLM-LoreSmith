@@ -1,0 +1,171 @@
+/* App specific styles. The style design and layout should always be modern, clean, and easy to use. */
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  padding: 2rem 1.5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Button styles */
+.btn {
+  @apply px-4 py-2 rounded-md font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-sm;
+}
+
+.btn-primary {
+  @apply bg-[#182241] text-white hover:bg-[#213C4E] hover:shadow-md;
+}
+
+.btn-secondary {
+  @apply bg-[#5C798B] text-white hover:bg-[#7B949C] hover:shadow-md;
+}
+
+.btn-outline {
+  @apply border border-[#182241] text-[#182241] hover:bg-[#182241] hover:text-white hover:shadow-md;
+}
+
+.btn-danger {
+  @apply bg-[#d32f2f] text-white hover:bg-[#b71c1c] hover:shadow-md;
+}
+
+.btn-sm {
+  @apply px-3 py-1 text-sm;
+}
+
+.btn-lg {
+  @apply px-6 py-3 text-lg;
+}
+
+/* Card styles */
+.card {
+  @apply bg-white rounded-lg shadow-md overflow-hidden transition-shadow duration-200 hover:shadow-lg border border-gray-100;
+}
+
+.card-header {
+  @apply p-4 border-b border-gray-200 bg-gray-50 font-medium;
+}
+
+.card-body {
+  @apply p-4;
+}
+
+.card-footer {
+  @apply p-4 border-t border-gray-200 bg-gray-50;
+}
+
+/* Form styles */
+.form-group {
+  @apply mb-4;
+}
+
+.form-label {
+  @apply block mb-2 text-sm font-medium text-gray-700;
+}
+
+.form-input {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#182241] focus:border-transparent transition-all duration-200;
+}
+
+.form-error {
+  @apply mt-1 text-sm text-[#d32f2f];
+}
+
+/* Alert styles */
+.alert {
+  @apply p-4 mb-4 rounded-md shadow-sm border-l-4;
+}
+
+.alert-info {
+  @apply bg-blue-50 text-blue-800 border-blue-500;
+}
+
+.alert-success {
+  @apply bg-green-50 text-green-800 border-green-500;
+}
+
+.alert-warning {
+  @apply bg-yellow-50 text-yellow-800 border-yellow-500;
+}
+
+.alert-error {
+  @apply bg-red-50 text-red-800 border-red-500;
+}
+
+/* Spacing utilities */
+.section {
+  @apply mb-8;
+}
+
+.section-title {
+  @apply text-2xl font-oswald font-bold text-[#182241] mb-4;
+}
+
+.section-description {
+  @apply text-gray-600 mb-6;
+}
+
+/* Badge styles */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.badge-primary {
+  @apply bg-[#182241] text-white;
+}
+
+.badge-secondary {
+  @apply bg-[#5C798B] text-white;
+}
+
+.badge-info {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.badge-success {
+  @apply bg-green-100 text-green-800;
+}
+
+.badge-warning {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.badge-error {
+  @apply bg-red-100 text-red-800;
+}
+
+/* Table styles */
+.table-container {
+  @apply overflow-x-auto rounded-lg shadow;
+}
+
+.table {
+  @apply min-w-full divide-y divide-gray-200 bg-white;
+}
+
+.table thead {
+  @apply bg-gray-50;
+}
+
+.table th {
+  @apply px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+}
+
+.table td {
+  @apply px-6 py-4 whitespace-nowrap text-sm text-gray-500;
+}
+
+.table tbody tr {
+  @apply hover:bg-gray-50 transition-colors duration-150;
+}
+
+/* Divider */
+.divider {
+  @apply h-px w-full bg-gray-200 my-6;
+} 

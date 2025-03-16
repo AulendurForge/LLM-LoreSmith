@@ -1,0 +1,45 @@
+# Core Dependencies
+fastapi==0.109.0
+uvicorn==0.25.0
+pydantic==2.4.2
+python-multipart==0.0.6
+python-dotenv==1.0.0
+httpx==0.25.1
+sqlalchemy==2.0.23
+alembic==1.12.1
+psycopg2-binary==2.9.9
+pytest==7.4.3
+
+# Document Processing 
+# Keeping only what's needed for document analysis in the backend
+pandas==2.1.3
+numpy==1.26.2
+pyarrow==14.0.1
+pdfplumber==0.10.3
+python-docx==1.0.1
+openpyxl==3.1.2
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# API Integration
+fastapi-jwt-auth==0.5.0
+python-jose==3.3.0
+passlib==1.7.4
+bcrypt==4.0.1
+cryptography==41.0.5
+
+# Monitoring & Logging
+prometheus-client==0.18.0
+opentelemetry-api==1.20.0
+opentelemetry-sdk==1.20.0
+opentelemetry-exporter-otlp==1.20.0
+opentelemetry-instrumentation-fastapi==0.41b0
+python-json-logger==2.0.7
+
+# Development & Testing
+black==23.11.0
+isort==5.12.0
+flake8==6.1.0
+mypy==1.7.0
+pytest-cov==4.1.0
+faker==20.0.3
