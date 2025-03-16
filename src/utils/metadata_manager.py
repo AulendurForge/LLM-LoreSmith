@@ -5,7 +5,7 @@ Provides support for custom metadata at document and training sample levels.
 
 import os
 import json
-from typing import Dict, List, Optional, Any, Set
+from typing import Dict, List, Optional, Any, Set, Tuple
 from pathlib import Path
 import uuid
 import time

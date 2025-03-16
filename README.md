@@ -7,16 +7,63 @@ LLM LoreSmith is a system designed to empower users—regardless of their machin
 - **Document Ingestion & Validation**: Upload trusted documents and sources with automatic validation
 - **Automated Dataset Generation**: Multistage pipeline to extract and refine content for training
 - **Adaptive Fine-Tuning**: Automated fine-tuning with vLLM, dynamically adjusting training epochs
+- **Enhanced Metadata System**: Configure and track custom metadata for documents and training samples
+- **Multiple Training Schemas**: Support for various training formats including instruction-response, question-answer, summarization, classification, and completion
 - **Data Security & Privacy**: Local execution with encryption and access controls
 - **Scalable Architecture**: Designed to work locally or scale to cloud deployment
-- **User-Friendly Interface**: Guided workflow with advanced options for experts
-- **Customizable Metadata**: Configure and track custom metadata for documents and training samples
-- **Multiple Training Schemas**: Support for various training formats beyond question-answer pairs
+- **User-Friendly Interface**: Integrated UI with specialized components for each feature
 - **Semantic Integrity Preservation**: Advanced processing to maintain meaning and context in training data
 
 ## Getting Started
 
-*Documentation coming soon*
+### Prerequisites
+
+- Python 3.8+
+- Node.js 14+
+- vLLM compatible environment
+
+### Installation
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/AulendurForge/LLM-LoreSmith.git
+   cd LLM-LoreSmith
+   ```
+
+2. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+3. Run the application:
+   ```
+   python -m src.app
+   ```
+
+### Usage Modes
+
+LLM LoreSmith can be run in different modes:
+
+- **All (Default)**: Run both API and UI components
+  ```
+  python -m src.app --mode all
+  ```
+
+- **API Only**: Run only the API server
+  ```
+  python -m src.app --mode api
+  ```
+
+- **UI Only**: Run only the UI components
+  ```
+  python -m src.app --mode ui
+  ```
+
+Additional options:
+- `--port`: Specify port number (default: 8000)
+- `--host`: Specify host address (default: 0.0.0.0)
+- `--debug`: Enable debug mode
+- `--share`: Create a public link (UI mode only)
 
 ## Architecture
 

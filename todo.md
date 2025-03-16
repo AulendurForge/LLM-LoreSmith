@@ -29,19 +29,19 @@
   - [x] Develop self-evaluation routines
   - [x] Create overfitting prevention mechanisms
 
-- [ ] Enhanced Metadata System
-  - [ ] Implement document-level metadata configuration
-  - [ ] Create training sample metadata support
-  - [ ] Develop metadata validation and schema management
-  - [ ] Add metadata UI components
+- [x] Enhanced Metadata System
+  - [x] Implement document-level metadata configuration
+  - [x] Create training sample metadata support
+  - [x] Develop metadata validation and schema management
+  - [x] Add metadata UI components
 
-- [ ] Multiple Training Schema Support
-  - [ ] Implement instruction-response format
-  - [ ] Add question-answer format
-  - [ ] Create summarization format
-  - [ ] Develop classification format
-  - [ ] Build completion format
-  - [ ] Add schema selection UI
+- [x] Multiple Training Schema Support
+  - [x] Implement instruction-response format
+  - [x] Add question-answer format
+  - [x] Create summarization format
+  - [x] Develop classification format
+  - [x] Build completion format
+  - [x] Add schema selection UI
 
 ## User Interface and Experience
 - [ ] Design guided workflow interface
