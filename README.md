@@ -1,7 +1,11 @@
+<p align="center">
+  <img src="src/assets/Aulendur Block Logo and Name.png" alt="Aulendur Logo" width="300">
+</p>
+
 # LLM LoreSmith
 
 <p align="center">
-  <img src="src/assets/Aulendur Block Logo and Name.png" alt="Aulendur Logo" width="300">
+  <img src="src\assets\LLM LoreSmith.png" alt="LoreSmith Dwarf Logo" width="300">
 </p>
 
 LLM LoreSmith is a system designed to empower users—regardless of their machine learning expertise—to fine-tune large language models (LLMs) quickly and securely using credible, authoritative documents.
