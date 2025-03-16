@@ -6,9 +6,9 @@ Handles document upload, validation, and secure storage.
 import os
 import hashlib
 import shutil
-import magic
+import filetype
 import PyPDF2
-import docx
+from docx import Document
 from typing import Dict, List, Optional, Tuple, BinaryIO
 from pathlib import Path
 from datetime import datetime
@@ -58,8 +58,23 @@ class DocumentValidator:
         if file_size > self.max_size:
             return False, f"File is too large (maximum {self.max_size} bytes)"
         
-        # Check file type
-        mime_type = magic.from_file(file_path, mime=True)
+        # Check file type using filetype instead of magic
+        kind = filetype.guess(file_path)
+        if kind is None:
+            # For text files that might not be detected by filetype
+            # Try to determine by extension
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext in ['.txt', '.md', '.html']:
+                mime_type = {
+                    '.txt': 'text/plain',
+                    '.md': 'text/markdown', 
+                    '.html': 'text/html'
+                }.get(ext)
+            else:
+                return False, "Unknown file type"
+        else:
+            mime_type = kind.mime
+            
         if mime_type not in self.SUPPORTED_TYPES:
             return False, f"Unsupported file type: {mime_type}"
         
@@ -96,7 +111,7 @@ class DocumentValidator:
     def _validate_docx(self, file_path: str) -> Tuple[bool, str]:
         """Validate DOCX document content."""
         try:
-            doc = docx.Document(file_path)
+            doc = Document(file_path)
             if len(doc.paragraphs) < 1:
                 return False, "DOCX document has no paragraphs"
             
@@ -155,29 +170,46 @@ class DocumentStorage:
         Returns:
             Document ID
         """
-        # Generate document ID based on content hash and timestamp
+        # Generate document ID
         doc_id = self._generate_document_id(file_path)
         
         # Create document directory
         doc_dir = os.path.join(self.base_dir, doc_id)
         os.makedirs(doc_dir, exist_ok=True)
         
-        # Copy document to storage
-        file_ext = os.path.splitext(file_path)[1]
-        if not file_ext:
-            mime_type = magic.from_file(file_path, mime=True)
-            validator = DocumentValidator()
-            if mime_type in validator.SUPPORTED_TYPES:
-                file_ext = validator.SUPPORTED_TYPES[mime_type]
-        
-        dest_path = os.path.join(doc_dir, f"document{file_ext}")
+        # Copy document file
+        ext = os.path.splitext(file_path)[1]
+        if not ext:
+            # Determine extension from file type if not in filename
+            kind = filetype.guess(file_path)
+            if kind is None:
+                # For text files, try to determine by reading first few bytes
+                with open(file_path, 'rb') as f:
+                    data = f.read(4096)
+                    if all(c < 128 for c in data):  # ASCII text
+                        ext = '.txt'
+                    else:
+                        ext = '.bin'  # Binary file
+            else:
+                ext = self.document_validator.SUPPORTED_TYPES.get(kind.mime, '.bin')
+                
+        dest_path = os.path.join(doc_dir, f"document{ext}")
         shutil.copy2(file_path, dest_path)
         
         # Store metadata
-        if metadata:
-            import json
-            with open(os.path.join(doc_dir, "metadata.json"), 'w') as f:
-                json.dump(metadata, f)
+        if metadata is None:
+            metadata = {}
+        
+        # Add system metadata
+        metadata.update({
+            "document_id": doc_id,
+            "filename": os.path.basename(file_path),
+            "size_bytes": os.path.getsize(file_path),
+            "storage_time": datetime.now().isoformat(),
+        })
+        
+        # Save metadata
+        self._save_metadata(doc_id, metadata)
         
         return doc_id
     

@@ -440,24 +440,6 @@ class WorkflowUI:
             # Shadows for depth
             shadow_spread="1px",
             shadow_inset="0px 0px 2px 0px rgba(0, 0, 0, 0.1) inset",
-            
-            # Rounded corners
-            radius_size="8px",
-            radius_large="12px",
-            
-            # Spacing
-            spacing_xs="2px",
-            spacing_sm="6px",
-            spacing_md="10px",
-            spacing_lg="14px",
-            spacing_xl="20px",
-            spacing_xxl="30px",
-            
-            # Text styling
-            text_size="16px",
-            text_size_lg="18px",
-            text_size_xl="22px",
-            text_size_xxl="26px",
         )
 
 

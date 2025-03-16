@@ -89,7 +89,7 @@ def main():
         app.launch(server_name=args.host, server_port=args.port, share=args.share)
     else:
         app = create_app(mode=args.mode)
-        uvicorn.run(app, host=args.host, port=args.port, debug=args.debug)
+        uvicorn.run(app, host=args.host, port=args.port, log_level="debug" if args.debug else "info", reload=args.debug)
 
 
 if __name__ == "__main__":
