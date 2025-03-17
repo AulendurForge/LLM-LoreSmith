@@ -1,13 +1,13 @@
 <p align="right">
   <a href="https://www.aulendur.com">
-    <img src="frontend/src/assets/Aulendur Block Logo and Name.png" alt="Aulendur Logo" width="150">
+    <img src="frontend/public/assets/Aulendur Block Logo and Name.png" alt="Aulendur Logo" width="150">
   </a>
 </p>
 
 # LLM LoreSmith
 
 <p align="center">
-  <img src="frontend/src/assets/LLM LoreSmith.png" alt="LoreSmith Dwarf Logo" width="300">
+  <img src="frontend/public/assets/LLM LoreSmith.png" alt="LoreSmith Dwarf Logo" width="300">
 </p>
 
 LLM LoreSmith is a system designed to empower users—regardless of their machine learning expertise—to fine-tune large language models (LLMs) quickly and securely using their own credible, authoritative documents and references.
@@ -29,7 +29,7 @@ LLM LoreSmith is a system designed to empower users—regardless of their machin
 - **Observability Framework**: End-to-end monitoring and performance tracking
 
 <p align="center">
-  <img src="frontend/src/assets/LoreSmith Snippet for README.png" alt="LoreSmith Snippet for README" width="600">
+  <img src="frontend/public/assets/LoreSmith Snippet for README.png" alt="LoreSmith Snippet for README" width="600">
 </p>
 
 ## Project Structure
