@@ -29,7 +29,7 @@ LLM LoreSmith is a system designed to empower users—regardless of their machin
 - **Observability Framework**: End-to-end monitoring and performance tracking
 
 <p align="center">
-  <img src="frontend/public/assets/LoreSmith Snippet for README.png" alt="LoreSmith Snippet for README" width="600">
+  <img src="frontend/public/assets/LoreSmith Snippet for README.png" alt="LoreSmith Snippet for README" width="900">
 </p>
 
 ## Project Structure
