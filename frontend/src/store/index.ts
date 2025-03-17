@@ -7,7 +7,8 @@ import {
   PAUSE,
   PERSIST,
   PURGE,
-  REGISTER
+  REGISTER,
+  Persistor
 } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 
@@ -16,7 +17,7 @@ import documentsReducer from './slices/documentsSlice';
 import uiReducer from './slices/uiSlice';
 import authReducer from './slices/authSlice';
 
-// Configure persist
+// Add error handling for persisted state
 const persistConfig = {
   key: 'root',
   storage,
@@ -31,7 +32,7 @@ const rootReducer = combineReducers({
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
-// Configure store
+// Configure store with error handling
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
@@ -40,9 +41,19 @@ export const store = configureStore({
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
     }),
+  // Add dev tools in development only
+  devTools: process.env.NODE_ENV !== 'production',
 });
 
-export const persistor = persistStore(store);
+// Create persistor safely
+export let persistor: Persistor;
+try {
+  persistor = persistStore(store);
+} catch (error) {
+  console.error('Failed to create persistor:', error);
+  // Create a fallback if persistence fails
+  persistor = persistStore(store, {}, () => {});
+}
 
 // Infer the `RootState` and `AppDispatch` types from the store itself
 export type RootState = ReturnType<typeof store.getState>;

@@ -1,34 +1,43 @@
-import React, { useEffect } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import Header from '../components/common/Header';
-import Footer from '../components/common/Footer';
 import Sidebar from '../components/common/Sidebar';
+import Footer from '../components/common/Footer';
 
 const MainLayout: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
-  const location = useLocation();
-
-  // Close sidebar when route changes (mobile)
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
   return (
-    <div className="app-container bg-gray-50">
-      <Header toggleSidebar={toggleSidebar} />
-      <div className="flex flex-1 relative">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <main className="flex-1 px-4 py-6 md:px-6 md:py-8 min-h-[calc(100vh-176px)]">
-          <div className="fade-in">
-            <Outlet />
-          </div>
-        </main>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header - Sticky at the top */}
+      <div className="sticky top-0 z-50">
+        <Header toggleSidebar={toggleSidebar} />
       </div>
-      <Footer />
+      
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar - Fixed on the left */}
+        <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+        
+        {/* Main Content - Scrollable with proper spacing and dynamic width */}
+        <div 
+          className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${
+            sidebarOpen ? 'ml-0 md:ml-64' : 'ml-0 md:ml-20'
+          }`}
+        >
+          <main className="flex-1 overflow-y-auto pt-6 px-6 pb-20">
+            <Outlet />
+          </main>
+          
+          {/* Footer - Sticky at the bottom */}
+          <div className="sticky bottom-0 z-40 w-full">
+            <Footer />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

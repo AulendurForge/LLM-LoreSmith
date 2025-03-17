@@ -5,21 +5,36 @@ import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), svgr()],
+  plugins: [
+    react({
+      // Configure React refresh options if needed
+    }),
+    svgr()
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
   server: {
+    // Explicitly set the port to 3000
     port: 3000,
-    open: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-        secure: false,
-      },
+    strictPort: true, // Fail if port is already in use
+    // Enable HMR in Docker
+    watch: {
+      usePolling: true,
+      interval: 100, // Poll every 100ms
+      binaryInterval: 300, // Poll binary files every 300ms
+    },
+    // Host setting to expose outside of container
+    host: '0.0.0.0',
+    // Allow remote connection in Docker
+    cors: true,
+    // HMR configuration
+    hmr: {
+      clientPort: 3000,
+      overlay: true, // Show errors in browser overlay
+      timeout: 1000, // Longer timeout for connection
     },
   },
 }); 

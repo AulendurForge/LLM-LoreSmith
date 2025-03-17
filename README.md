@@ -28,6 +28,10 @@ LLM LoreSmith is a system designed to empower users—regardless of their machin
 - **Advanced Model Evaluation**: Comprehensive benchmarking and comparison tools
 - **Observability Framework**: End-to-end monitoring and performance tracking
 
+<p align="center">
+  <img src="frontend/src/assets/LoreSmith Snippet for README.png" alt="LoreSmith Snippet for README" width="600">
+</p>
+
 ## Project Structure
 
 LLM LoreSmith follows a modern microservices architecture with containerization support:
@@ -203,6 +207,60 @@ The application is containerized using Docker, with the following containers:
 To rebuild containers after code changes:
 ```
 docker-compose build [service_name]
+```
+
+## Development Setup
+
+LLM LoreSmith now supports two development modes:
+
+### 1. Development Mode (with Hot Reloading)
+
+This mode provides real-time code updates and is ideal for active development:
+
+```bash
+# Make the script executable (first time only)
+chmod +x dev.sh
+
+# Start development environment
+./dev.sh
+```
+
+Features:
+- Hot Module Replacement (HMR) for real-time UI updates without page reloads
+- Source maps for easier debugging
+- Development tools and logging
+- Changes to React components update immediately in the browser
+
+### 2. Production Mode
+
+This mode builds optimized static files and is suitable for testing production builds:
+
+```bash
+# Make the script executable (first time only)
+chmod +x prod.sh
+
+# Start production environment
+./prod.sh
+```
+
+### Manual Container Control
+
+You can also manage the containers directly:
+
+```bash
+# Development mode
+docker compose -f docker-compose.dev.yml up -d
+
+# Production mode
+docker compose up -d
+
+# View logs
+docker compose -f docker-compose.dev.yml logs -f  # For development
+docker compose logs -f                            # For production
+
+# Stop containers
+docker compose -f docker-compose.dev.yml down     # For development
+docker compose down                               # For production
 ```
 
 ## Contributing

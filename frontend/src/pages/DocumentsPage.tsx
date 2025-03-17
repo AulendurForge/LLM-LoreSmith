@@ -97,7 +97,7 @@ const DocumentsPage: React.FC = () => {
     <div className="section">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
         <div>
-          <h1 className="section-title">Document Management</h1>
+          <h1 className="section-title">Document Management Test</h1>
           <p className="section-description">
             Upload and manage your documents for fine-tuning your language models.
           </p>
