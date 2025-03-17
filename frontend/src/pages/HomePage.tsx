@@ -22,7 +22,7 @@ const HomePage: React.FC = () => {
           Democratize LLM fine-tuning with your own credible & authoritative documents.
         </p>
         <p className="text-xl md:text-2xl text-gray-600 max-w-4xl mx-auto mb-1">
-          Create custom AI models that understand your domain, all without ML expertise.
+          Let Aulendur's LoreSmith help you create custom AI models that understand your domain, all without ML expertise.
         </p>
       </section>
       
@@ -50,7 +50,7 @@ const HomePage: React.FC = () => {
                 <div className="w-12 h-12 bg-[#213C4E] text-white rounded-full flex items-center justify-center mr-4">
                   <FiDatabase size={24} />
                 </div>
-                <h3 className="text-xl font-oswald font-bold">2. Dataset Generation</h3>
+                <h3 className="text-xl font-oswald font-bold">2. Training Dataset Generation</h3>
               </div>
               <p className="text-gray-600">
                 Skip the painstaking manual work of creating training data. Our multistage pipeline intelligently extracts and formats training samples while preserving the semantic integrity of your source materials.

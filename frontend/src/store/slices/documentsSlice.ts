@@ -1,5 +1,25 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+// Validation result interfaces
+export interface ValidationIssue {
+  type: 'error' | 'warning' | 'info';
+  message: string;
+  details?: string;
+  autoFixable?: boolean;
+}
+
+export interface ValidationResult {
+  isValid: boolean;
+  score: number; // 0-100
+  issues: ValidationIssue[];
+  metrics: {
+    textQuality: number; // 0-100
+    consistency: number; // 0-100
+    completeness: number; // 0-100
+    relevance: number; // 0-100
+  };
+}
+
 // Define types
 export interface Document {
   id: string;
@@ -10,6 +30,9 @@ export interface Document {
   status: 'uploading' | 'uploaded' | 'processing' | 'error' | 'complete';
   progress: number;
   error?: string;
+  tags?: string[];
+  category?: string;
+  validationResult?: ValidationResult; // Store validation results
   metadata?: {
     title?: string;
     author?: string;
@@ -17,6 +40,8 @@ export interface Document {
     language?: string;
     pageCount?: number;
     keywords?: string[];
+    pii?: boolean;
+    securityClassification?: 'N/A' | 'Unclassified' | 'Secret' | 'Top Secret';
     [key: string]: any;
   };
 }
@@ -104,6 +129,24 @@ const documentsSlice = createSlice({
       }
     },
     
+    // Update document tags
+    updateDocumentTags: (state, action: PayloadAction<{ id: string, tags: string[] }>) => {
+      const { id, tags } = action.payload;
+      const index = state.documents.findIndex(doc => doc.id === id);
+      if (index !== -1) {
+        state.documents[index].tags = tags;
+      }
+    },
+    
+    // Update document category
+    updateDocumentCategory: (state, action: PayloadAction<{ id: string, category: string }>) => {
+      const { id, category } = action.payload;
+      const index = state.documents.findIndex(doc => doc.id === id);
+      if (index !== -1) {
+        state.documents[index].category = category;
+      }
+    },
+    
     // Select document
     selectDocument: (state, action: PayloadAction<string | null>) => {
       state.selectedDocumentId = action.payload;
@@ -124,6 +167,15 @@ const documentsSlice = createSlice({
       state.documents = [];
       state.selectedDocumentId = null;
     },
+    
+    // Update document validation results
+    updateDocumentValidation: (state, action: PayloadAction<{ id: string, validationResult: ValidationResult }>) => {
+      const { id, validationResult } = action.payload;
+      const index = state.documents.findIndex(doc => doc.id === id);
+      if (index !== -1) {
+        state.documents[index].validationResult = validationResult;
+      }
+    },
   },
 });
 
@@ -136,6 +188,9 @@ export const {
   updateDocumentProgress,
   updateDocumentStatus,
   updateDocumentMetadata,
+  updateDocumentTags,
+  updateDocumentCategory,
+  updateDocumentValidation,
   selectDocument,
   setLoading,
   setError,

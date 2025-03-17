@@ -1,18 +1,16 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-
-// Layouts
-import MainLayout from './layouts/MainLayout';
-
-// Pages
 import HomePage from './pages/HomePage';
 import DocumentsPage from './pages/DocumentsPage';
 import NotFoundPage from './pages/NotFoundPage';
+import MainLayout from './layouts/MainLayout';
 
 // Styles
 import './styles/App.css';
 
 const App: React.FC = () => {
+  console.log('App component rendering');
+  
   return (
     <Routes>
       <Route path="/" element={<MainLayout />}>

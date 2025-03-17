@@ -81,7 +81,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
               <div className="flex items-center justify-center w-6 h-6">
                 <FiDatabase size={iconSize} />
               </div>
-              <span className={`ml-3 ${!isOpen ? 'md:hidden' : ''}`}>Datasets</span>
+              <span className={`ml-3 ${!isOpen ? 'md:hidden' : ''}`}>Training Datasets</span>
             </NavLink>
             
             <NavLink

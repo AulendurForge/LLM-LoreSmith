@@ -80,6 +80,11 @@ The main components are:
 The application follows a sequential processing pipeline:
 
 1. **Document Ingestion**: Documents are uploaded, validated, and stored
+
+<p align="center">
+  <img src="frontend/public/assets/LoreSmith Doc Ingestion for README.png" alt="LoreSmith Snippet for README" width="900">
+</p>
+
 2. **Dataset Generation**: Training samples are extracted from documents
 3. **Fine-Tuning**: Models are fine-tuned on datasets
 4. **Evaluation**: Models are evaluated for quality

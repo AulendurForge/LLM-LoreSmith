@@ -42,7 +42,7 @@ export const store = configureStore({
       },
     }),
   // Add dev tools in development only
-  devTools: process.env.NODE_ENV !== 'production',
+  devTools: import.meta.env.MODE !== 'production',
 });
 
 // Create persistor safely

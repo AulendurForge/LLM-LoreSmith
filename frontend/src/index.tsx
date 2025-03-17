@@ -20,6 +20,9 @@ import App from './App';
 // Global Styles
 import './styles/index.css';
 
+console.log('Initializing application...');
+console.log('Redux store:', store);
+
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
@@ -27,7 +30,7 @@ const root = ReactDOM.createRoot(
 root.render(
   <React.StrictMode>
     <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
+      <PersistGate loading={<div>Loading...</div>} persistor={persistor}>
         <BrowserRouter>
           <App />
           <ToastContainer
