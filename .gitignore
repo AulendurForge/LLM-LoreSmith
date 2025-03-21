@@ -100,6 +100,7 @@ lerna-debug.log*
 data/local-storage/*
 verticalSlicePlan.md
 DevelopmentPlan.md
+PROGRESS.md
 .cursorrules/*
 !data/local-storage/.gitkeep
 

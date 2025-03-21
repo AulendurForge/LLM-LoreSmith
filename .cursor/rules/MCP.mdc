@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Review the available MCP tools for using external information and tools to complete tasks like inspecting the user's browser console logs and other types of external utilities available to the LLM [mcp.json](mdc:.cursor/mcp.json)

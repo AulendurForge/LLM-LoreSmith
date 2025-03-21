@@ -100,6 +100,7 @@ Each step produces artifacts that are used in subsequent steps, allowing for tra
 - Docker and Docker Compose
 - Kubernetes CLI (kubectl)
 - Git
+- **PostgreSQL** (v13+)
 - **NVIDIA GPU with CUDA Support** (Required for vLLM)
   - NVIDIA CUDA Toolkit (v11.8+ recommended)
   - Compatible NVIDIA GPU drivers
@@ -163,7 +164,7 @@ To use vLLM with Docker containers:
 
 1. Clone the repository:
    ```
-   git clone https://github.com/aulendur/llm-loresmith.git
+   git clone https://github.com/AulendurForge/LLM-LoreSmith
    cd llm-loresmith
    ```
 
@@ -180,93 +181,150 @@ To use vLLM with Docker containers:
    pip install -r requirements.txt
    ```
 
-4. Docker setup:
-
-   Build and start all services (with GPU support):
+4. Set up PostgreSQL database:
+   
+   Ensure PostgreSQL is installed and running:
+   - Windows: PostgreSQL service should be running in Services
+   - Linux: `sudo service postgresql start`
+   - Mac: `brew services start postgresql`
+   
+   Configure the database connection in `.env` file:
    ```
-   cd ..
-   docker-compose build
-   docker-compose up -d
+   # Create .env file in the backend directory
+   cd backend
+   touch .env
+   ```
+   
+   Add the following configuration to the `.env` file:
+   ```
+   NODE_ENV=development
+   PORT=5000
+   DATABASE_URL=postgres://postgres:postgres@localhost:5432/loresmith
+   STORAGE_PATH=./data/documents
+   JWT_SECRET=devSecret123
+   LOG_LEVEL=debug
+   ```
+   
+   > **Important**: Make sure to use `localhost` as the hostname in `DATABASE_URL` (not `postgres`), which ensures proper connection between the application and the database.
+   
+   The application will automatically:
+   - Create the database if it doesn't exist
+   - Run migrations to create the required tables
+   - Seed initial data for testing
+
+5. Start the application:
+
+   ### Running in Development Mode (with Hot Reloading)
+   
+   This mode provides real-time code updates and is ideal for active development.
+   
+   **Method 1: Using the convenience script**
+   ```bash
+   # Make the script executable (first time only)
+   chmod +x dev.sh
+   
+   # Start development environment
+   ./dev.sh
+   ```
+   
+   **Method 2: Starting components individually**
+   
+   Start the backend:
+   ```bash
+   cd backend
+   npm run dev
+   ```
+   
+   Start the frontend (in a separate terminal):
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+   
+   Features:
+   - Hot Module Replacement (HMR) for real-time UI updates without page reloads
+   - Source maps for easier debugging
+   - Development tools and logging
+   - Changes to React components update immediately in the browser
+   
+   ### Running in Production Mode
+   
+   This mode builds optimized static files and is suitable for testing production builds.
+   
+   **Method 1: Using the convenience script**
+   ```bash
+   # Make the script executable (first time only)
+   chmod +x prod.sh
+   
+   # Start production environment
+   ./prod.sh
+   ```
+   
+   **Method 2: Using Docker Compose directly**
+   ```bash
+   # Build and start all services
+   docker compose up -d
+   
+   # View logs
+   docker compose logs -f
+   
+   # Stop containers
+   docker compose down
    ```
 
-5. Access the application:
+6. Access the application:
    ```
    Frontend: http://localhost:3000
    Backend API: http://localhost:5000
    ```
+   
+### Troubleshooting Common Issues
 
-### Docker Container Management
+#### Backend Cannot Connect to Database
+If you see database connection errors:
 
-The application is containerized using Docker, with the following containers:
+1. Verify PostgreSQL is running:
+   ```bash
+   # Windows
+   sc query postgresql
+   
+   # Linux/Mac
+   ps aux | grep postgres
+   ```
 
-- **frontend**: React application for the user interface
-- **backend**: Node.js API service
-- **vllm-service**: GPU-accelerated language model service
-- **postgres**: Database for storing application data
-- **redis**: Caching and job queue
-- **prometheus/grafana**: Monitoring and metrics
-- **elasticsearch/kibana/logstash**: Logging and log analysis
+2. Check database connection settings in `.env`:
+   - Ensure `DATABASE_URL` uses `localhost` (not `postgres`) as the hostname
+   - Verify username, password, and database name are correct
 
-#### Building the Containers
+3. Run database connection test:
+   ```bash
+   cd backend
+   npm run test:db-connection
+   ```
 
-To rebuild containers after code changes:
-```
-docker-compose build [service_name]
-```
+#### API Connection Refused Errors
+If the frontend cannot connect to the backend (e.g., "ERR_CONNECTION_REFUSED"):
 
-## Development Setup
+1. Verify the backend server is running:
+   ```bash
+   # Check if something is listening on port 5000
+   netstat -ano | grep 5000
+   ```
 
-LLM LoreSmith now supports two development modes:
+2. If running, but still getting connection errors, try restarting both frontend and backend:
+   ```bash
+   # In backend directory
+   npm run dev
+   
+   # In frontend directory (separate terminal)
+   npm run dev
+   ```
 
-### 1. Development Mode (with Hot Reloading)
-
-This mode provides real-time code updates and is ideal for active development:
-
-```bash
-# Make the script executable (first time only)
-chmod +x dev.sh
-
-# Start development environment
-./dev.sh
-```
-
-Features:
-- Hot Module Replacement (HMR) for real-time UI updates without page reloads
-- Source maps for easier debugging
-- Development tools and logging
-- Changes to React components update immediately in the browser
-
-### 2. Production Mode
-
-This mode builds optimized static files and is suitable for testing production builds:
-
-```bash
-# Make the script executable (first time only)
-chmod +x prod.sh
-
-# Start production environment
-./prod.sh
-```
-
-### Manual Container Control
-
-You can also manage the containers directly:
-
-```bash
-# Development mode
-docker compose -f docker-compose.dev.yml up -d
-
-# Production mode
-docker compose up -d
-
-# View logs
-docker compose -f docker-compose.dev.yml logs -f  # For development
-docker compose logs -f                            # For production
-
-# Stop containers
-docker compose -f docker-compose.dev.yml down     # For development
-docker compose down                               # For production
-```
+3. Test API connectivity directly:
+   ```bash
+   cd backend
+   npm run test:api
+   ```
 
 ## Contributing
 

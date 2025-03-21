@@ -3,4 +3,5 @@ description: Review the vertical slice plan and update as we progress through bu
 globs: 
 alwaysApply: true
 ---
-Review the vertical slice plan and update as we progress through building out the first set of application features [verticalSlicePlan.md](mdc:verticalSlicePlan.md)
+I want you to continue through the plan, but as you continue, make sure to continuously 2 things that are critical to the initial document ingestion process. The first is to evaluate how documents are being processed while ingested to actually use effective measures for the "validation" that we are displaying to users about the current quality of document readiness for extraction. The second is to make sure that the process for identifying metadata and allowing users to review metadata, update/edit metadata, and add custom metadata is all intuitive, robustly managed, and will allow for the metadata to be passed forward with the extracted content cleanly and reliably when we get to the document extraction portion of the development plan for this application. Review the vertical slice plan and update as we progress through building out the first set of application features [verticalSlicePlan.md](mdc:verticalSlicePlan.md)
+

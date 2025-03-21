@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import svgr from 'vite-plugin-svgr';
@@ -15,6 +16,16 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true, // This enables Jest-like globals (describe, it, expect)
+    setupFiles: ['./src/setupTests.ts'],
+    coverage: {
+      provider: 'istanbul',
+      reporter: ['text', 'html'],
+      exclude: ['node_modules/']
+    }
   },
   server: {
     // Explicitly set the port to 3000
@@ -36,5 +47,12 @@ export default defineConfig({
       overlay: true, // Show errors in browser overlay
       timeout: 1000, // Longer timeout for connection
     },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false
+      }
+    }
   },
 }); 

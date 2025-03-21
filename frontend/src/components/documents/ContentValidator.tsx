@@ -1,93 +1,279 @@
 import React, { useState, useEffect } from 'react';
 import { FiCheck, FiAlertTriangle, FiAlertCircle, FiInfo, FiShield } from 'react-icons/fi';
-import { Document, updateDocumentStatus, ValidationResult, ValidationIssue } from '../../store/slices/documentsSlice';
+import { 
+  Document as DocType, 
+  updateDocumentStatus, 
+  ValidationResult, 
+  ValidationIssue 
+} from '../../store/slices/documentsSlice';
 import { useDispatch } from 'react-redux';
+import { processDocument, getDocumentStatus } from '../../api/documentsApi';
 
 interface ContentValidatorProps {
-  document: Document;
+  document: DocType;
   onValidationComplete?: (isValid: boolean) => void;
 }
 
-// Export the validation function so it can be used elsewhere
-export const generateMockValidationResult = (doc: Document): ValidationResult => {
+// Validation logic (would connect to backend in production)
+export const validateDocumentContent = async (doc: DocType): Promise<ValidationResult> => {
+  // In a real implementation, this would call the backend API for document validation
+  // For now, we'll use a more sophisticated mock that simulates real validation
+  
   const fileExtension = doc.name.split('.').pop()?.toLowerCase();
+  const fileName = doc.name.toLowerCase();
   
-  // Generate random scores for metrics
-  const textQuality = Math.floor(Math.random() * 30) + 70; // 70-100
-  const consistency = Math.floor(Math.random() * 40) + 60; // 60-100
-  const completeness = Math.floor(Math.random() * 30) + 70; // 70-100
-  const relevance = Math.floor(Math.random() * 25) + 75; // 75-100
+  // Analysis metrics based on document properties
+  let textQuality = 85; // Base quality score
+  let consistency = 80; // Base consistency score
+  let completeness = 90; // Base completeness score
+  let relevance = 85; // Base relevance score
   
-  // Calculate overall score
-  const overallScore = Math.floor(
-    (textQuality + consistency + completeness + relevance) / 4
-  );
-  
-  // Generate issues based on file type and random factors
+  // Initialize issues array
   const issues: ValidationIssue[] = [];
   
-  // Add some random issues based on document type
+  // Analyze document based on file type
   if (fileExtension === 'pdf') {
-    if (Math.random() > 0.7) {
+    // PDF validation
+    
+    // Check for scanned content indicators
+    const hasScannedIndicators = fileName.includes('scan') || 
+                               fileName.includes('scanned') || 
+                               Math.random() > 0.7; // Simulate detection
+    
+    if (hasScannedIndicators) {
       issues.push({
         type: 'warning',
         message: 'PDF contains scanned pages',
-        details: 'Some pages appear to be scanned images which may reduce extraction quality.',
+        details: 'Some pages appear to be scanned images which will reduce extraction quality. Consider using OCR preprocessing.',
         autoFixable: false
       });
+      
+      // Scanned content reduces quality and completeness
+      textQuality -= 15;
+      completeness -= 10;
     }
     
-    if (Math.random() > 0.8) {
+    // Check for PDF structure issues
+    const hasPdfStructureIssues = Math.random() > 0.8; // Simulate detection
+    if (hasPdfStructureIssues) {
       issues.push({
-        type: 'info',
-        message: 'Multiple columns detected',
-        details: 'Document uses multi-column layout which may affect text extraction order.',
-        autoFixable: true
-      });
-    }
-  } else if (fileExtension === 'docx' || fileExtension === 'doc') {
-    if (Math.random() > 0.7) {
-      issues.push({
-        type: 'warning',
-        message: 'Document contains complex formatting',
-        details: 'Tables and complex formatting may not be fully preserved in extracted content.',
+        type: 'error',
+        message: 'PDF structure issues detected',
+        details: 'Document contains corrupt or malformed PDF structure which may prevent proper content extraction.',
         autoFixable: false
       });
+      
+      // Structure issues significantly impact quality
+      textQuality -= 25;
+      consistency -= 20;
     }
-  } else if (fileExtension === 'txt') {
-    if (Math.random() > 0.6) {
+    
+    // Check for text extraction issues
+    const hasTextExtractionIssues = Math.random() > 0.7; // Simulate detection
+    if (hasTextExtractionIssues) {
+      issues.push({
+        type: 'warning',
+        message: 'Text extraction challenges',
+        details: 'Document contains complex layouts, tables or graphics that may impact text extraction quality.',
+        autoFixable: false
+      });
+      
+      // Extraction issues impact consistency
+      consistency -= 15;
+    }
+    
+    // Check for PDF security/restrictions
+    const hasSecurityRestrictions = Math.random() > 0.9; // Simulate detection
+    if (hasSecurityRestrictions) {
+      issues.push({
+        type: 'error',
+        message: 'PDF has content restrictions',
+        details: 'Document has security settings that prevent content extraction. Please provide an unrestricted version.',
+        autoFixable: false
+      });
+      
+      // Security restrictions severely impact extraction
+      textQuality -= 30;
+      completeness -= 25;
+    }
+  } 
+  else if (fileExtension === 'docx' || fileExtension === 'doc') {
+    // Word document validation
+    
+    // Check for complex formatting
+    const hasComplexFormatting = Math.random() > 0.6; // Simulate detection
+    if (hasComplexFormatting) {
+      issues.push({
+        type: 'warning',
+        message: 'Complex document formatting',
+        details: 'Document uses complex formatting features (tables, text boxes, etc.) which may affect extraction quality.',
+        autoFixable: true
+      });
+      
+      // Complex formatting impacts consistency
+      consistency -= 10;
+    }
+    
+    // Check for embedded content
+    const hasEmbeddedContent = Math.random() > 0.7; // Simulate detection
+    if (hasEmbeddedContent) {
+      issues.push({
+        type: 'info',
+        message: 'Embedded content detected',
+        details: 'Document contains embedded objects (images, charts) which will be excluded from text extraction.',
+        autoFixable: false
+      });
+      
+      // Embedded content impacts completeness
+      completeness -= 8;
+    }
+    
+    // Check for track changes/comments
+    const hasTrackChanges = Math.random() > 0.8; // Simulate detection
+    if (hasTrackChanges) {
+      issues.push({
+        type: 'warning',
+        message: 'Track changes or comments detected',
+        details: 'Document contains revision marks or comments which may be included in extraction.',
+        autoFixable: true
+      });
+      
+      // Track changes impact consistency and quality
+      consistency -= 12;
+      textQuality -= 5;
+    }
+  } 
+  else if (fileExtension === 'txt' || fileExtension === 'md') {
+    // Plain text validation
+    
+    // Check for encoding issues
+    const hasEncodingIssues = Math.random() > 0.9; // Simulate detection
+    if (hasEncodingIssues) {
+      issues.push({
+        type: 'error',
+        message: 'Character encoding issues',
+        details: 'Document contains characters in incompatible encodings which may appear as garbage text.',
+        autoFixable: true
+      });
+      
+      // Encoding issues impact quality
+      textQuality -= 20;
+    }
+    
+    // Check for line ending consistency
+    const hasLineEndingIssues = Math.random() > 0.7; // Simulate detection
+    if (hasLineEndingIssues) {
       issues.push({
         type: 'info',
         message: 'Inconsistent line endings',
-        details: 'Document contains mixed line ending styles (CRLF and LF).',
+        details: 'Document uses mixed line ending styles which may affect paragraph detection.',
         autoFixable: true
       });
+      
+      // Line ending issues impact consistency
+      consistency -= 5;
+    }
+    
+    // Check for structured content
+    if (fileExtension === 'md') {
+      const hasMarkdownIssues = Math.random() > 0.8; // Simulate detection
+      if (hasMarkdownIssues) {
+        issues.push({
+          type: 'info',
+          message: 'Markdown syntax variations',
+          details: 'Document uses alternative markdown syntax which may be processed differently.',
+          autoFixable: true
+        });
+        
+        // Markdown issues slightly impact consistency
+        consistency -= 5;
+      }
     }
   }
   
-  // Add some general issues
-  if (Math.random() > 0.75) {
-    issues.push({
-      type: 'error',
-      message: 'Potentially corrupt content section',
-      details: 'Some content sections contain unexpected characters or encoding issues.',
-      autoFixable: false
-    });
-  }
+  // Universal content checks
   
-  if (Math.random() > 0.8) {
+  // Check for content density (too sparse)
+  const hasLowContentDensity = Math.random() > 0.8; // Simulate detection
+  if (hasLowContentDensity) {
     issues.push({
       type: 'warning',
-      message: 'Inconsistent formatting',
-      details: 'Document contains inconsistent formatting styles which may affect training quality.',
-      autoFixable: true
+      message: 'Low content density',
+      details: 'Document contains significant empty space or very little textual content relative to its size.',
+      autoFixable: false
     });
+    
+    // Low density impacts relevance
+    relevance -= 15;
+    completeness -= 10;
   }
   
-  // Determine if document is valid (passing validation)
-  const hasErrors = issues.some(issue => issue.type === 'error');
-  const isValid = overallScore >= 75 && !hasErrors;
+  // Check for potential PII data
+  const hasPotentialPII = doc.metadata?.pii === true || Math.random() > 0.9; // Use metadata or simulate
+  if (hasPotentialPII) {
+    issues.push({
+      type: 'warning',
+      message: 'Potential PII detected',
+      details: 'Document may contain personally identifiable information (PII) which should be handled according to privacy policies.',
+      autoFixable: false
+    });
+    
+    // PII doesn't impact extraction quality but is important to flag
+  }
   
+  // Check for language consistency
+  const hasLanguageMixing = Math.random() > 0.85; // Simulate detection
+  if (hasLanguageMixing) {
+    issues.push({
+      type: 'info',
+      message: 'Multiple languages detected',
+      details: 'Document contains content in multiple languages which may affect extraction quality.',
+      autoFixable: false
+    });
+    
+    // Language mixing impacts consistency
+    consistency -= 10;
+  }
+  
+  // Content quality analysis
+  
+  // Check for repetitive content
+  const hasRepetitiveContent = Math.random() > 0.9; // Simulate detection
+  if (hasRepetitiveContent) {
+    issues.push({
+      type: 'info',
+      message: 'Repetitive content',
+      details: 'Document contains sections with highly similar or duplicate content.',
+      autoFixable: false
+    });
+    
+    // Repetitive content impacts relevance
+    relevance -= 10;
+  }
+  
+  // Ensure metrics are within bounds
+  textQuality = Math.max(0, Math.min(100, textQuality));
+  consistency = Math.max(0, Math.min(100, consistency));
+  completeness = Math.max(0, Math.min(100, completeness));
+  relevance = Math.max(0, Math.min(100, relevance));
+  
+  // Calculate overall score weighted by importance:
+  // - Text quality: 35%
+  // - Consistency: 25%
+  // - Completeness: 25%
+  // - Relevance: 15%
+  const overallScore = Math.floor(
+    (textQuality * 0.35) + 
+    (consistency * 0.25) + 
+    (completeness * 0.25) + 
+    (relevance * 0.15)
+  );
+  
+  // Document is valid if score is sufficient and no critical errors
+  const hasErrors = issues.some(issue => issue.type === 'error');
+  const isValid = overallScore >= 70 && !hasErrors;
+  
+  // Return validation result
   return {
     isValid,
     score: overallScore,
@@ -106,15 +292,71 @@ const ContentValidator: React.FC<ContentValidatorProps> = ({ document, onValidat
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(document.validationResult || null);
   const [error, setError] = useState<string | null>(null);
+  const [statusPolling, setStatusPolling] = useState<NodeJS.Timeout | null>(null);
 
   // Update validation result when document changes or when validationResult is updated
   useEffect(() => {
     if (document.validationResult) {
       setValidationResult(document.validationResult);
     }
+    
+    // Clean up polling on unmount
+    return () => {
+      if (statusPolling) {
+        clearInterval(statusPolling);
+      }
+    };
   }, [document.id, document.validationResult]);
 
-  // Manually run validation if needed (e.g., for revalidation)
+  // Poll for validation status if document is processing
+  useEffect(() => {
+    if (document.status === 'processing' && !validating && !statusPolling) {
+      pollForValidationStatus();
+    }
+  }, [document.status]);
+
+  // Poll for validation status
+  const pollForValidationStatus = () => {
+    // Clear any existing polling
+    if (statusPolling) {
+      clearInterval(statusPolling);
+    }
+    
+    // Start polling
+    const interval = setInterval(async () => {
+      try {
+        // Get document status from API
+        const statusResponse = await getDocumentStatus(document.id);
+        
+        // If document is no longer processing, clear polling
+        if (statusResponse.status !== 'processing') {
+          clearInterval(interval);
+          setStatusPolling(null);
+          
+          // If document is complete, update validation result
+          if (statusResponse.status === 'complete') {
+            // In a real implementation, we would fetch the validation result from the backend
+            // For now, we'll simulate it
+            const validationResult = await validateDocumentContent(document);
+            setValidationResult(validationResult);
+            
+            // Notify parent component of completion
+            if (onValidationComplete) {
+              onValidationComplete(validationResult.isValid);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error polling for validation status:', err);
+        clearInterval(interval);
+        setStatusPolling(null);
+      }
+    }, 2000);
+    
+    setStatusPolling(interval);
+  };
+
+  // Run validation process
   const validateContent = async () => {
     setValidating(true);
     setError(null);
@@ -126,26 +368,38 @@ const ContentValidator: React.FC<ContentValidatorProps> = ({ document, onValidat
         status: 'processing' 
       }));
       
-      // Simulate API call for validation with timeout
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Generate mock validation result
-      const mockResult = generateMockValidationResult(document);
-      setValidationResult(mockResult);
-      
-      // Update document status based on validation result
-      dispatch(updateDocumentStatus({ 
-        id: document.id, 
-        status: mockResult.isValid ? 'complete' : 'error',
-        error: mockResult.isValid ? undefined : 'Document failed validation checks'
-      }));
-      
-      // Notify parent component of completion
-      if (onValidationComplete) {
-        onValidationComplete(mockResult.isValid);
+      // In a real implementation, we would call the backend API to start processing
+      try {
+        // Start processing on backend
+        await processDocument(document.id);
+        
+        // Start polling for status
+        pollForValidationStatus();
+      } catch (err) {
+        console.error('Error starting document processing:', err);
+        throw new Error('Failed to start document processing');
       }
       
-      setValidating(false);
+      // For demo purposes, simulate the validation to show results immediately
+      // In production, this would come from the backend after processing completes
+      setTimeout(async () => {
+        const result = await validateDocumentContent(document);
+        setValidationResult(result);
+        
+        // Update document status based on validation result
+        dispatch(updateDocumentStatus({ 
+          id: document.id, 
+          status: result.isValid ? 'complete' : 'error',
+          error: result.isValid ? undefined : 'Document failed validation checks'
+        }));
+        
+        // Notify parent component of completion
+        if (onValidationComplete) {
+          onValidationComplete(result.isValid);
+        }
+        
+        setValidating(false);
+      }, 3000);
     } catch (err) {
       console.error('Error validating content:', err);
       setError('Failed to validate document content. Please try again.');
@@ -167,22 +421,86 @@ const ContentValidator: React.FC<ContentValidatorProps> = ({ document, onValidat
   };
 
   // Fix an issue automatically
-  const fixIssue = (index: number) => {
+  const fixIssue = async (index: number) => {
     if (!validationResult) return;
     
-    // Create a copy of the issues array
-    const updatedIssues = [...validationResult.issues];
+    setValidating(true);
     
-    // Remove the issue that was fixed
-    updatedIssues.splice(index, 1);
-    
-    // Update the validation result
-    setValidationResult({
-      ...validationResult,
-      issues: updatedIssues,
-      // If no more errors exist, mark as valid
-      isValid: !updatedIssues.some(issue => issue.type === 'error')
-    });
+    try {
+      // Get the issue to fix
+      const issueToFix = validationResult.issues[index];
+      
+      // Create a copy of the issues array
+      const updatedIssues = [...validationResult.issues];
+      
+      // Simulate fixing the issue
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // In a real implementation, this would call the backend API to fix the issue
+      // The backend would apply the appropriate fix based on the issue type
+      
+      // Remove the issue that was fixed
+      updatedIssues.splice(index, 1);
+      
+      // Update metrics based on the fixed issue
+      let updatedMetrics = { ...validationResult.metrics };
+      
+      switch (issueToFix.type) {
+        case 'error':
+          updatedMetrics.textQuality += 10;
+          updatedMetrics.consistency += 5;
+          break;
+        case 'warning':
+          updatedMetrics.textQuality += 5;
+          updatedMetrics.consistency += 3;
+          break;
+        case 'info':
+          updatedMetrics.consistency += 2;
+          break;
+      }
+      
+      // Ensure metrics are within bounds
+      Object.keys(updatedMetrics).forEach(key => {
+        updatedMetrics[key as keyof typeof updatedMetrics] = Math.min(
+          100, 
+          updatedMetrics[key as keyof typeof updatedMetrics]
+        );
+      });
+      
+      // Calculate new overall score
+      const newScore = Math.floor(
+        (updatedMetrics.textQuality * 0.35) + 
+        (updatedMetrics.consistency * 0.25) + 
+        (updatedMetrics.completeness * 0.25) + 
+        (updatedMetrics.relevance * 0.15)
+      );
+      
+      // Update the validation result
+      const newValidationResult = {
+        ...validationResult,
+        issues: updatedIssues,
+        metrics: updatedMetrics,
+        score: newScore,
+        // If no more errors exist, mark as valid
+        isValid: !updatedIssues.some(issue => issue.type === 'error') && newScore >= 70
+      };
+      
+      setValidationResult(newValidationResult);
+      
+      // Update document status if it's now valid
+      if (newValidationResult.isValid && !validationResult.isValid) {
+        dispatch(updateDocumentStatus({ 
+          id: document.id, 
+          status: 'complete'
+        }));
+      }
+      
+      setValidating(false);
+    } catch (err) {
+      console.error('Error fixing issue:', err);
+      setError('Failed to fix the issue. Please try manually.');
+      setValidating(false);
+    }
   };
 
   // Get status color based on score

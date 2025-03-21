@@ -18,6 +18,11 @@ const backupRoutes = require('./api/routes/backupRoutes');
 const config = require('./config');
 const logger = require('./utils/logger');
 
+// Import database connection
+const { db, testConnection } = require('./db');
+const setupDatabase = require('./db/setup');
+const { initializeStorage } = require('./utils/storage');
+
 // Create Express app
 const app = express();
 
@@ -74,9 +79,43 @@ app.use(errorHandler);
 
 // Start server
 const PORT = config.port || 5000;
-app.listen(PORT, () => {
-  logger.info(`Server running on port ${PORT}`);
-});
+
+// Initialize the application
+const init = async () => {
+  try {
+    // Initialize storage
+    const storageInitialized = initializeStorage();
+    if (!storageInitialized) {
+      logger.error('Storage initialization failed. Exiting application.');
+      process.exit(1);
+    }
+    
+    // Setup database (create if not exists and run migrations)
+    const dbSetupSuccess = await setupDatabase();
+    if (!dbSetupSuccess) {
+      logger.error('Database setup failed. Exiting application.');
+      process.exit(1);
+    }
+    
+    // Test database connection
+    const dbConnected = await testConnection();
+    if (!dbConnected) {
+      logger.error('Failed to connect to database. Exiting application.');
+      process.exit(1);
+    }
+    
+    // Start the server if initialization successful
+    app.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    logger.error('Error during initialization:', error);
+    process.exit(1);
+  }
+};
+
+// Start the application
+init();
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {

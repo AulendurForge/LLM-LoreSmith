@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { FiUpload, FiFile, FiTrash2, FiInfo, FiFilter, FiCheck, FiX, FiSearch, FiEye, FiList, FiGrid, FiTag, FiUploadCloud, FiCheckCircle, FiAlertCircle, FiFileText, FiCheckSquare, FiFolder } from 'react-icons/fi';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { FiFile, FiTrash2, FiInfo, FiFilter, FiCheck, FiX, FiSearch, FiEye, FiList, FiGrid, FiTag, FiUploadCloud, FiCheckCircle, FiAlertCircle, FiFileText, FiCheckSquare, FiFolder, FiEdit, FiSquare, FiHeart, FiClock, FiSettings } from 'react-icons/fi';
 import { useDropzone } from 'react-dropzone';
 import { useDispatch, useSelector } from 'react-redux';
 import { v4 as uuidv4 } from 'uuid';
@@ -10,16 +10,26 @@ import {
   updateDocumentProgress,
   updateDocumentStatus,
   updateDocumentValidation,
-  selectDocument
+  selectDocument,
+  toggleDocumentSelection,
+  toggleBatchOperationMode
 } from '../store/slices/documentsSlice';
 import MetadataExtractor from '../components/documents/MetadataExtractor';
 import DocumentPreview from '../components/documents/DocumentPreview';
-import ContentValidator, { generateMockValidationResult } from '../components/documents/ContentValidator';
+import ContentValidator, { validateDocumentContent } from '../components/documents/ContentValidator';
 import DuplicateDetector from '../components/documents/DuplicateDetector';
+import DocumentEditor from '../components/documents/DocumentEditor';
+import BatchOperations from '../components/documents/BatchOperations';
+import SelectableDocument from '../components/documents/SelectableDocument';
 import RecentlyViewed from '../components/RecentlyViewed';
 import TagManager from '../components/documents/TagManager';
 import CategoryManager from '../components/documents/CategoryManager';
 import DocumentTags from '../components/documents/DocumentTags';
+import DeleteConfirmation from '../components/documents/DeleteConfirmation';
+import FavoriteButton from '../components/documents/FavoriteButton';
+import FavoritesFilter from '../components/documents/FavoritesFilter';
+import VersionHistory from '../components/documents/VersionHistory';
+import MetadataPreferences from '../components/documents/MetadataPreferences';
 import { RootState } from '../store';
 
 // Component for uploading and displaying documents
@@ -30,6 +40,8 @@ const DocumentsPage: React.FC = () => {
   const documents = useSelector((state: RootState) => state.documents.documents || []);
   const selectedDocumentId = useSelector((state: RootState) => state.documents.selectedDocumentId || null);
   const selectedDocument = documents.find(doc => doc.id === selectedDocumentId) || null;
+  const batchOperationMode = useSelector((state: RootState) => state.documents.batchOperationMode);
+  const selectedDocumentIds = useSelector((state: RootState) => state.documents.selectedDocumentIds);
   
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
@@ -41,6 +53,26 @@ const DocumentsPage: React.FC = () => {
   const [hasError, setHasError] = useState(false);
   const [batchProgress, setBatchProgress] = useState<number>(0);
   const [isDuplicateCheckOpen, setIsDuplicateCheckOpen] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState<boolean>(false);
+  const [documentToDelete, setDocumentToDelete] = useState<DocType | null>(null);
+  const [filterOptions, setFilterOptions] = useState({
+    category: '',
+    tags: [] as string[],
+    status: '' as DocType['status'] | '',
+    dateRange: {
+      start: null as Date | null,
+      end: null as Date | null,
+    },
+    showOnlyFavorites: false,
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  const [documentToEdit, setDocumentToEdit] = useState<DocType | null>(null);
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState<boolean>(false);
+  const [isMetadataPrefsOpen, setIsMetadataPrefsOpen] = useState<boolean>(false);
+
+  // Set uploading state based on progress
+  const isUploading = Object.keys(uploadProgress).length > 0;
 
   // Error catch effect
   useEffect(() => {
@@ -159,28 +191,16 @@ const DocumentsPage: React.FC = () => {
           }));
           
           // Update document status separately
-          setTimeout(() => {
+          setTimeout(async () => {
             const updatedDoc = documents.find(d => d.id === id);
             if (updatedDoc) {
-              dispatch(addDocument({
-                ...updatedDoc,
-                status: 'processing' as const
-              }));
-              
-              // Perform content validation once upload is complete
-              setTimeout(() => {
-                // Generate validation result
-                const validationResult = generateMockValidationResult(updatedDoc);
-                
-                // Store validation result in document
-                dispatch(updateDocumentValidation({
-                  id,
-                  validationResult
-                }));
+              try {
+                // Await the validation result since it's a Promise
+                const validationResult = await validateDocumentContent(updatedDoc);
                 
                 // Update document status based on validation result
-                dispatch(updateDocumentStatus({
-                  id,
+                dispatch(updateDocumentStatus({ 
+                  id: updatedDoc.id, 
                   status: validationResult.isValid ? 'complete' : 'error',
                   error: validationResult.isValid ? undefined : 'Document failed validation checks'
                 }));
@@ -189,13 +209,36 @@ const DocumentsPage: React.FC = () => {
                 const docWithValidation = {
                   ...updatedDoc,
                   validationResult,
-                  status: validationResult.isValid ? 'complete' as const : 'error' as const,
+                  status: validationResult.isValid ? 'complete' as DocType['status'] : 'error' as DocType['status'],
                   error: validationResult.isValid ? undefined : 'Document failed validation checks'
                 };
                 
                 dispatch(addDocument(docWithValidation));
+              } catch (err) {
+                console.error('Error validating document:', err);
                 
-              }, 2000); // Simulate validation delay
+                // Handle validation error
+                dispatch(updateDocumentStatus({ 
+                  id: updatedDoc.id, 
+                  status: 'error',
+                  error: 'Failed to validate document'
+                }));
+                
+                // Add document without validation
+                dispatch(addDocument({
+                  ...updatedDoc,
+                  status: 'error',
+                  error: 'Failed to validate document'
+                }));
+              }
+              
+              // Select the newly uploaded document
+              dispatch(selectDocument(id));
+              
+              // Show duplicate detection for the first uploaded document if multiple
+              if (acceptedFiles.length === 1 || (acceptedFiles[0] === file)) {
+                setIsDuplicateCheckOpen(true);
+              }
             }
           }, 100);
           
@@ -221,37 +264,81 @@ const DocumentsPage: React.FC = () => {
     });
   }, [dispatch, documents]);
 
-  // Filter documents based on search term
-  const filteredDocuments = documents.filter((doc: DocType) => {
-    if (!searchTerm) return true;
-    
-    // Search by name
-    if (doc.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return true;
-    }
-    
-    // Search by metadata
-    if (doc.metadata) {
-      const metaValues = Object.values(doc.metadata).filter(v => v);
-      for (const value of metaValues) {
-        if (typeof value === 'string' && value.toLowerCase().includes(searchTerm.toLowerCase())) {
-          return true;
-        }
+  // Apply all filters to the documents
+  const filteredDocuments = useMemo(() => {
+    return documents.filter(doc => {
+      // Filter by search term
+      if (searchTerm && !doc.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+        return false;
       }
-    }
-    
-    // Search by tags
-    if (doc.tags && doc.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))) {
+      
+      // Filter by category
+      if (filterOptions.category && doc.category !== filterOptions.category) {
+        return false;
+      }
+      
+      // Filter by tags
+      if (filterOptions.tags.length > 0) {
+        if (!doc.tags || doc.tags.length === 0) return false;
+        if (!filterOptions.tags.every(tag => doc.tags?.includes(tag))) return false;
+      }
+      
+      // Filter by status
+      if (filterOptions.status && doc.status !== filterOptions.status) {
+        return false;
+      }
+      
+      // Filter by date range
+      if (filterOptions.dateRange.start || filterOptions.dateRange.end) {
+        const docDate = new Date(doc.uploadedAt);
+        if (filterOptions.dateRange.start && docDate < filterOptions.dateRange.start) return false;
+        if (filterOptions.dateRange.end && docDate > filterOptions.dateRange.end) return false;
+      }
+      
+      // Filter by favorites
+      if (filterOptions.showOnlyFavorites && !doc.isFavorite) {
+        return false;
+      }
+      
       return true;
-    }
-    
-    // Search by category
-    if (doc.category && doc.category.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return true;
-    }
-    
-    return false;
-  });
+    });
+  }, [documents, searchTerm, filterOptions]);
+
+  // Reset all filters
+  const resetFilters = () => {
+    setFilterOptions({
+      category: '',
+      tags: [],
+      status: '',
+      dateRange: {
+        start: null,
+        end: null,
+      },
+      showOnlyFavorites: false,
+    });
+    setSearchTerm('');
+  };
+
+  // Get all available categories and tags for filter options
+  const availableCategories = Array.from(new Set(documents.map(doc => doc.category).filter(Boolean) as string[]));
+  const availableTags = Array.from(new Set(documents.flatMap(doc => doc.tags || [])));
+
+  // Toggle a tag in the filter
+  const toggleTagFilter = (tag: string) => {
+    setFilterOptions(prev => {
+      if (prev.tags.includes(tag)) {
+        return {
+          ...prev,
+          tags: prev.tags.filter(t => t !== tag)
+        };
+      } else {
+        return {
+          ...prev,
+          tags: [...prev.tags, tag]
+        };
+      }
+    });
+  };
 
   // Handle document selection
   const handleSelectDocument = (id: string) => {
@@ -261,12 +348,38 @@ const DocumentsPage: React.FC = () => {
 
   // Remove a document from the list
   const handleRemoveDocument = (id: string) => {
-    dispatch(removeDocument(id));
-    
-    // Close detail panel if the selected document is removed
-    if (selectedDocumentId === id) {
-      setShowDetailPanel(false);
+    const docToDelete = documents.find(doc => doc.id === id);
+    if (docToDelete) {
+      setDocumentToDelete(docToDelete);
+      setIsDeleteConfirmOpen(true);
     }
+  };
+
+  // Confirm document deletion
+  const confirmDelete = (id: string) => {
+    try {
+      console.log('Confirming document deletion for ID:', id);
+      dispatch(removeDocument(id));
+      
+      // Close detail panel if the selected document is removed
+      if (selectedDocumentId === id) {
+        setShowDetailPanel(false);
+      }
+      
+      setIsDeleteConfirmOpen(false);
+      setDocumentToDelete(null);
+      
+      // Display success message
+      console.log('Document deleted successfully');
+    } catch (error) {
+      console.error('Error in confirmDelete:', error);
+    }
+  };
+
+  // Cancel document deletion
+  const cancelDelete = () => {
+    setIsDeleteConfirmOpen(false);
+    setDocumentToDelete(null);
   };
 
   // Dropzone configuration
@@ -282,19 +395,13 @@ const DocumentsPage: React.FC = () => {
     return 'bg-[#182241]';
   };
 
-  // Get status badge based on document status
-  const getStatusBadge = (doc: DocType) => {
-    switch(doc.status) {
+  // Render status badge based on document status
+  const renderStatusBadge = (status: DocType['status']) => {
+    switch (status) {
       case 'uploading':
         return (
           <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
             Uploading
-          </span>
-        );
-      case 'uploaded':
-        return (
-          <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
-            Uploaded
           </span>
         );
       case 'processing':
@@ -318,6 +425,19 @@ const DocumentsPage: React.FC = () => {
       default:
         return null;
     }
+  };
+
+  // Toggle favorites filter
+  const handleToggleFavoritesFilter = () => {
+    setFilterOptions(prev => ({
+      ...prev,
+      showOnlyFavorites: !prev.showOnlyFavorites
+    }));
+  };
+
+  // Toggle batch mode
+  const toggleBatchMode = () => {
+    dispatch(toggleBatchOperationMode());
   };
 
   return (
@@ -346,7 +466,7 @@ const DocumentsPage: React.FC = () => {
           </div>
           
           {/* Upload Progress */}
-          {Object.keys(uploadProgress).length > 0 && (
+          {isUploading && (
             <div className="mb-4 bg-white rounded-lg shadow-md overflow-hidden">
               <div className="p-3 border-b border-gray-200">
                 <h3 className="font-medium">Uploading {Object.keys(uploadProgress).length} document(s)</h3>
@@ -405,284 +525,571 @@ const DocumentsPage: React.FC = () => {
             <RecentlyViewed document={selectedDocument || undefined} maxItems={5} />
           </div>
           
-          {/* Search and filter bar */}
-          <div className="flex items-center mb-4 gap-2">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                placeholder="Search documents..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-[#182241] focus:border-[#182241]"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+          {/* Filtering and view options */}
+          <div className="mb-4 flex flex-wrap gap-2 justify-between items-center">
+            <div className="flex flex-wrap gap-2 items-center">
+              {/* Search input */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search documents..."
+                  className="pl-9 pr-4 py-2 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+              </div>
+              
+              {/* Filter button */}
+              <button 
+                className="flex items-center gap-1 px-3 py-2 rounded-md text-sm bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <FiFilter size={14} />
+                <span>Filters</span>
+              </button>
+              
+              {/* Favorites filter */}
+              <FavoritesFilter 
+                showOnlyFavorites={filterOptions.showOnlyFavorites}
+                onToggle={handleToggleFavoritesFilter}
               />
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             </div>
             
-            <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-              <FiFilter size={20} className="text-gray-600" />
-            </button>
-            
-            <div className="flex border border-gray-300 rounded-lg overflow-hidden">
-              <button 
-                className={`p-2 ${activeView === 'list' ? 'bg-[#182241] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                onClick={() => setActiveView('list')}
-                aria-label="List view"
+            <div className="flex gap-2">
+              {/* Batch mode toggle */}
+              <button
+                className={`px-3 py-2 rounded-md text-sm ${
+                  batchOperationMode 
+                    ? 'bg-blue-50 text-blue-600 border border-blue-200' 
+                    : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
+                }`}
+                onClick={toggleBatchMode}
               >
-                <FiList size={20} />
+                {batchOperationMode ? 'Exit Batch Mode' : 'Batch Operations'}
               </button>
-              <button 
-                className={`p-2 ${activeView === 'grid' ? 'bg-[#182241] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                onClick={() => setActiveView('grid')}
-                aria-label="Grid view"
+              
+              {/* Metadata preferences button */}
+              <button
+                className="px-3 py-2 rounded-md text-sm bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 flex items-center gap-1"
+                onClick={() => setIsMetadataPrefsOpen(true)}
               >
-                <FiGrid size={20} />
+                <FiSettings size={14} />
+                <span>Metadata</span>
               </button>
+              
+              {/* View toggles */}
+              <div className="flex rounded-md border border-gray-200 overflow-hidden">
+                <button
+                  className={`px-3 py-2 flex items-center ${activeView === 'list' ? 'bg-gray-100' : 'bg-white'}`}
+                  onClick={() => setActiveView('list')}
+                >
+                  <FiList size={16} />
+                </button>
+                <button
+                  className={`px-3 py-2 flex items-center ${activeView === 'grid' ? 'bg-gray-100' : 'bg-white'}`}
+                  onClick={() => setActiveView('grid')}
+                >
+                  <FiGrid size={16} />
+                </button>
+              </div>
             </div>
           </div>
           
-          {/* Document list */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-oswald font-bold">Uploaded Documents</h2>
-                <p className="text-sm text-gray-500">
-                  {filteredDocuments.length} of {documents.length} documents
-                </p>
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="bg-white shadow-md rounded-lg p-4 mb-4">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-medium">Filter Documents</h3>
+                <button
+                  className="text-sm text-blue-500 hover:underline"
+                  onClick={resetFilters}
+                >
+                  Reset All
+                </button>
               </div>
               
-              {filteredDocuments.length === 0 && searchTerm && (
-                <div className="text-center p-8 bg-gray-50 rounded-lg border border-gray-200">
-                  <FiSearch className="mx-auto mb-3 text-gray-400" size={24} />
-                  <p className="text-gray-700">No documents match your search term.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Category Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category
+                  </label>
+                  <select
+                    className="select select-bordered w-full"
+                    value={filterOptions.category}
+                    onChange={(e) => setFilterOptions(prev => ({
+                      ...prev,
+                      category: e.target.value
+                    }))}
+                  >
+                    <option value="">All Categories</option>
+                    {availableCategories.map(category => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Status Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    className="select select-bordered w-full"
+                    value={filterOptions.status}
+                    onChange={(e) => setFilterOptions(prev => ({
+                      ...prev,
+                      status: e.target.value as DocType['status'] | ''
+                    }))}
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="uploading">Uploading</option>
+                    <option value="uploaded">Uploaded</option>
+                    <option value="processing">Processing</option>
+                    <option value="complete">Complete</option>
+                    <option value="error">Error</option>
+                  </select>
+                </div>
+                
+                {/* Date Range Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    From Date
+                  </label>
+                  <input
+                    type="date"
+                    className="input input-bordered w-full"
+                    value={filterOptions.dateRange.start ? filterOptions.dateRange.start.toISOString().split('T')[0] : ''}
+                    onChange={(e) => setFilterOptions(prev => ({
+                      ...prev,
+                      dateRange: {
+                        ...prev.dateRange,
+                        start: e.target.value ? new Date(e.target.value) : null
+                      }
+                    }))}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    To Date
+                  </label>
+                  <input
+                    type="date"
+                    className="input input-bordered w-full"
+                    value={filterOptions.dateRange.end ? filterOptions.dateRange.end.toISOString().split('T')[0] : ''}
+                    onChange={(e) => setFilterOptions(prev => ({
+                      ...prev,
+                      dateRange: {
+                        ...prev.dateRange,
+                        end: e.target.value ? new Date(e.target.value) : null
+                      }
+                    }))}
+                  />
+                </div>
+              </div>
+              
+              {/* Tags Filter */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tags
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {availableTags.map(tag => (
+                    <button
+                      key={tag}
+                      className={`px-2 py-1 text-xs rounded-full ${
+                        filterOptions.tags.includes(tag)
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      onClick={() => toggleTagFilter(tag)}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                  {availableTags.length === 0 && (
+                    <p className="text-sm text-gray-500">No tags available</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Document List */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            {/* List header */}
+            <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+              <h2 className="text-lg font-oswald">{filteredDocuments.length} Document{filteredDocuments.length !== 1 ? 's' : ''}</h2>
+              
+              {filteredDocuments.length > 0 && (
+                <div className="flex items-center text-sm">
+                  <span className="text-gray-500 mr-2">Sort by:</span>
+                  <select 
+                    className="select select-bordered select-sm"
+                    defaultValue="newest"
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                    <option value="name">Name A-Z</option>
+                    <option value="name-desc">Name Z-A</option>
+                    <option value="size">Size (smallest)</option>
+                    <option value="size-desc">Size (largest)</option>
+                  </select>
                 </div>
               )}
-              
-              {documents.length === 0 && !searchTerm && (
-                <div className="text-center p-8 bg-gray-50 rounded-lg border border-gray-200">
-                  <FiFile className="mx-auto mb-3 text-gray-400" size={24} />
-                  <p className="text-gray-700">No documents yet</p>
-                </div>
-              )}
-              
-              {filteredDocuments.length > 0 && activeView === 'list' ? (
-                <div className="card">
-                  <ul className="divide-y divide-gray-200">
-                    {filteredDocuments.map((doc: DocType) => (
-                      <li 
-                        key={doc.id} 
-                        className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${selectedDocumentId === doc.id ? 'bg-blue-50' : ''}`}
-                        onClick={() => handleSelectDocument(doc.id)}
+            </div>
+            
+            {/* Document grid */}
+            {activeView === 'grid' ? (
+              filteredDocuments.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredDocuments.length === 0 ? (
+                    <div className="col-span-full p-6 bg-white rounded-lg shadow text-center text-gray-500">
+                      <FiFile className="mx-auto mb-3 text-gray-300" size={32} />
+                      <p>No documents found</p>
+                      {searchTerm && <p className="text-sm">Try adjusting your search or filters</p>}
+                    </div>
+                  ) : (
+                    filteredDocuments.map(doc => (
+                      <div 
+                        key={doc.id}
+                        className={`bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer ${selectedDocumentId === doc.id ? 'ring-2 ring-blue-500' : ''}`}
+                        onClick={batchOperationMode 
+                          ? () => dispatch(toggleDocumentSelection(doc.id))
+                          : () => handleSelectDocument(doc.id)
+                        }
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center">
-                            <div className="h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                              <FiFile className="text-[#182241]" size={20} />
-                            </div>
-                            <div>
-                              <h3 className="font-medium">{doc.name}</h3>
-                              <div className="flex items-center text-xs text-gray-500 mt-1">
-                                <span>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
-                                <span className="mx-1">•</span>
-                                <span>{(doc.size / 1024 / 1024).toFixed(2)} MB</span>
-                                
-                                {doc.status === 'processing' && (
-                                  <>
-                                    <span className="mx-1">•</span>
-                                    <span className="text-orange-500">Processing</span>
-                                  </>
-                                )}
-                                
-                                {doc.status === 'error' && (
-                                  <>
-                                    <span className="mx-1">•</span>
-                                    <span className="text-red-500">Error</span>
-                                  </>
+                            {batchOperationMode && (
+                              <div className="mr-2">
+                                {selectedDocumentIds.includes(doc.id) ? (
+                                  <FiCheckSquare size={18} className="text-blue-600" />
+                                ) : (
+                                  <FiSquare size={18} className="text-gray-400" />
                                 )}
                               </div>
-                              
-                              {/* Display document tags */}
-                              {doc.tags && doc.tags.length > 0 && (
-                                <DocumentTags tags={doc.tags} className="mt-2" />
-                              )}
-                              
-                              {/* Display document category */}
-                              {doc.category && (
-                                <div className="mt-2 flex items-center">
-                                  <div className="px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded flex items-center">
-                                    <FiFolder className="mr-1" size={10} />
-                                    {doc.category}
-                                  </div>
-                                </div>
-                              )}
+                            )}
+                            <div className="h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                              <FiFile className="text-[#182241]" size={16} />
+                            </div>
+                            <div>
+                              <h3 className="font-medium text-gray-800 truncate max-w-[180px]">{doc.name}</h3>
+                              <p className="text-xs text-gray-500">
+                                {new Date(doc.uploadedAt).toLocaleDateString()}
+                              </p>
                             </div>
                           </div>
-                          <button
-                            className="p-2 text-gray-500 hover:text-red-500"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveDocument(doc.id);
-                            }}
-                          >
-                            <FiTrash2 size={18} />
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : filteredDocuments.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-                  {filteredDocuments.map((doc: DocType) => (
-                    <div 
-                      key={doc.id} 
-                      className={`border rounded-lg p-4 cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-colors ${selectedDocumentId === doc.id ? 'border-blue-500 bg-blue-50' : ''}`}
-                      onClick={() => handleSelectDocument(doc.id)}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <FiFile className="text-[#182241]" size={20} />
-                        </div>
-                        <button
-                          className="p-1 text-gray-400 hover:text-red-500"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveDocument(doc.id);
-                          }}
-                        >
-                          <FiTrash2 size={16} />
-                        </button>
-                      </div>
-                      <h3 className="font-medium mb-1 truncate">{doc.name}</h3>
-                      <div className="flex items-center text-xs text-gray-500 mb-2">
-                        <span>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
-                        <span className="mx-1">•</span>
-                        <span>{(doc.size / 1024 / 1024).toFixed(2)} MB</span>
-                      </div>
-                      
-                      {/* Display document tags */}
-                      {doc.tags && doc.tags.length > 0 && (
-                        <DocumentTags tags={doc.tags} className="mt-2" />
-                      )}
-                      
-                      {/* Display document category */}
-                      {doc.category && (
-                        <div className="mt-2 flex items-center">
-                          <div className="px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded flex items-center">
-                            <FiFolder className="mr-1" size={10} />
-                            {doc.category}
+                          
+                          <div className="flex space-x-1">
+                            {/* Favorite button */}
+                            <FavoriteButton 
+                              documentId={doc.id}
+                              isFavorite={doc.isFavorite}
+                            />
+                            
+                            {/* Edit and Delete buttons */}
+                            {!batchOperationMode && (
+                              <>
+                                <button 
+                                  className="p-1 text-gray-400 hover:text-blue-500 rounded"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDocumentToEdit(doc);
+                                    setIsEditModalOpen(true);
+                                  }}
+                                >
+                                  <FiEdit size={16} />
+                                </button>
+                                <button 
+                                  className="p-1 text-gray-400 hover:text-red-500 rounded"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveDocument(doc.id);
+                                  }}
+                                >
+                                  <FiTrash2 size={16} />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
-                      )}
+                        
+                        <div className="flex justify-between items-end mt-2">
+                          <div>
+                            <div className="flex items-center text-xs text-gray-500 mb-1">
+                              <span>{(doc.size / 1024 / 1024).toFixed(2)} MB</span>
+                              {doc.category && (
+                                <>
+                                  <span className="mx-1">•</span>
+                                  <span className="flex items-center">
+                                    <FiFolder size={10} className="mr-1" />
+                                    {doc.category}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            <DocumentTags tags={doc.tags || []} />
+                          </div>
+                          
+                          <div>
+                            {renderStatusBadge(doc.status)}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <div className="p-8 text-center">
+                  <p className="text-gray-500">No documents found matching your criteria.</p>
+                  {Object.keys(filterOptions).some(key => 
+                    filterOptions[key as keyof typeof filterOptions] !== '' && 
+                    (Array.isArray(filterOptions[key as keyof typeof filterOptions]) 
+                      ? (filterOptions[key as keyof typeof filterOptions] as any[]).length > 0 
+                      : true)
+                  ) && (
+                    <button 
+                      className="btn btn-outline btn-sm mt-2"
+                      onClick={resetFilters}
+                    >
+                      Clear Filters
+                    </button>
+                  )}
+                </div>
+              )
+            ) : (
+              // List view
+              filteredDocuments.length > 0 ? (
+                <div className="divide-y">
+                  {filteredDocuments.map((doc: DocType) => (
+                    <div 
+                      key={doc.id}
+                      className={`p-3 hover:bg-blue-50 cursor-pointer ${
+                        selectedDocumentId === doc.id && !batchOperationMode ? 'bg-blue-50' : 
+                        selectedDocumentIds.includes(doc.id) && batchOperationMode ? 'bg-blue-50' : ''
+                      }`}
+                      onClick={() => {
+                        if (batchOperationMode) {
+                          dispatch(toggleDocumentSelection(doc.id));
+                        } else {
+                          handleSelectDocument(doc.id);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center">
+                          {batchOperationMode && (
+                            <div className="mr-2">
+                              {selectedDocumentIds.includes(doc.id) ? (
+                                <FiCheckSquare size={18} className="text-blue-600" />
+                              ) : (
+                                <FiSquare size={18} className="text-gray-400" />
+                              )}
+                            </div>
+                          )}
+                          <div className="h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <FiFile className="text-[#182241]" size={16} />
+                          </div>
+                        </div>
+                        
+                        <div className="flex-grow">
+                          <h3 className="font-medium truncate">{doc.name}</h3>
+                          <div className="flex items-center text-xs text-gray-500">
+                            <span>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                            <span className="mx-1">•</span>
+                            <span>{(doc.size / 1024 / 1024).toFixed(2)} MB</span>
+                            {doc.category && (
+                              <>
+                                <span className="mx-1">•</span>
+                                <span className="flex items-center">
+                                  <FiFolder size={10} className="mr-1" />
+                                  {doc.category}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          {doc.tags && doc.tags.length > 0 && (
+                            <div className="hidden md:flex items-center gap-1">
+                              {doc.tags.slice(0, 2).map(tag => (
+                                <span 
+                                  key={tag} 
+                                  className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                              {doc.tags.length > 2 && (
+                                <span className="text-xs text-gray-500">+{doc.tags.length - 2}</span>
+                              )}
+                            </div>
+                          )}
+                          
+                          {doc.status === 'complete' && (
+                            <span className="flex items-center text-xs text-green-600">
+                              <FiCheck size={12} className="mr-1" /> Valid
+                            </span>
+                          )}
+                          
+                          {doc.status === 'error' && (
+                            <span className="flex items-center text-xs text-red-600">
+                              Error
+                            </span>
+                          )}
+                          
+                          {!batchOperationMode && (
+                            <button
+                              className="p-1 text-gray-400 hover:text-red-500"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveDocument(doc.id);
+                              }}
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
-              ) : null}
-            </div>
+              ) : (
+                <div className="p-8 text-center">
+                  <p className="text-gray-500">No documents found matching your criteria.</p>
+                  {Object.keys(filterOptions).some(key => 
+                    filterOptions[key as keyof typeof filterOptions] !== '' && 
+                    (Array.isArray(filterOptions[key as keyof typeof filterOptions]) 
+                      ? (filterOptions[key as keyof typeof filterOptions] as any[]).length > 0 
+                      : true)
+                  ) && (
+                    <button 
+                      className="btn btn-outline btn-sm mt-2"
+                      onClick={resetFilters}
+                    >
+                      Clear Filters
+                    </button>
+                  )}
+                </div>
+              )
+            )}
           </div>
         </div>
         
         {/* Right column - Document Details */}
-        <div className="w-full lg:w-[42%]">
-          <div className="bg-white rounded-lg shadow-md overflow-hidden h-full">
-            {selectedDocument ? (
-              <div className="flex flex-col h-full">
-                {/* Document header */}
-                <div className="p-2 border-b border-gray-200 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center mr-2">
-                      <FiFile className="text-[#182241]" size={16} />
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-sm truncate max-w-xs">{selectedDocument.name}</h3>
-                      <div className="flex items-center text-xs text-gray-500 mt-0.5">
-                        <span>{new Date(selectedDocument.uploadedAt).toLocaleDateString()}</span>
-                        <span className="mx-1">•</span>
-                        <span>{(selectedDocument.size / 1024 / 1024).toFixed(2)} MB</span>
-                      </div>
-                    </div>
-                  </div>
+        <div className={`w-full lg:w-[42%] transition-all duration-300 ${showDetailPanel ? 'opacity-100' : 'opacity-0 lg:opacity-100'}`}>
+          {selectedDocument ? (
+            <div className="bg-white rounded-lg shadow-md p-5">
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-xl font-oswald font-semibold truncate max-w-[80%]">
+                  {selectedDocument.name}
+                </h2>
+                <div className="flex space-x-1">
+                  <button
+                    className="p-2 text-gray-500 hover:text-blue-500"
+                    onClick={() => setIsVersionHistoryOpen(true)}
+                    title="View version history"
+                  >
+                    <FiClock size={16} />
+                  </button>
+                  <button
+                    className="p-2 text-gray-500 hover:text-blue-500 mr-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDocumentToEdit(selectedDocument);
+                      setIsEditModalOpen(true);
+                    }}
+                  >
+                    <FiEdit size={16} />
+                  </button>
                   <button
                     className="p-2 text-gray-500 hover:text-red-500"
-                    onClick={() => handleRemoveDocument(selectedDocument.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveDocument(selectedDocument.id);
+                    }}
                   >
                     <FiTrash2 size={16} />
                   </button>
                 </div>
-                
-                {/* Tab navigation */}
-                <div className="flex border-b border-gray-200">
-                  <button
-                    className={`px-2 py-1.5 text-sm font-medium ${activeTab === 'metadata' ? 'border-b-2 border-[#182241] text-[#182241]' : 'text-gray-500 hover:text-gray-700'}`}
-                    onClick={() => setActiveTab('metadata')}
-                  >
-                    <FiInfo size={12} className="inline mr-1" />
-                    Metadata
-                  </button>
-                  <button
-                    className={`px-2 py-1.5 text-sm font-medium ${activeTab === 'validation' ? 'border-b-2 border-[#182241] text-[#182241]' : 'text-gray-500 hover:text-gray-700'}`}
-                    onClick={() => setActiveTab('validation')}
-                  >
-                    <FiCheckSquare size={12} className="inline mr-1" />
-                    Validation
-                  </button>
-                  <button
-                    className={`px-2 py-1.5 text-sm font-medium ${activeTab === 'preview' ? 'border-b-2 border-[#182241] text-[#182241]' : 'text-gray-500 hover:text-gray-700'}`}
-                    onClick={() => setActiveTab('preview')}
-                  >
-                    <FiEye size={12} className="inline mr-1" />
-                    Preview
-                  </button>
-                  <button
-                    className={`px-2 py-1.5 text-sm font-medium ${activeTab === 'tags' ? 'border-b-2 border-[#182241] text-[#182241]' : 'text-gray-500 hover:text-gray-700'}`}
-                    onClick={() => setActiveTab('tags')}
-                  >
-                    <FiTag size={12} className="inline mr-1" />
-                    Tags
-                  </button>
-                  <button
-                    className={`px-2 py-1.5 text-sm font-medium ${activeTab === 'categories' ? 'border-b-2 border-[#182241] text-[#182241]' : 'text-gray-500 hover:text-gray-700'}`}
-                    onClick={() => setActiveTab('categories')}
-                  >
-                    <FiFolder size={12} className="inline mr-1" />
-                    Categories
-                  </button>
-                </div>
-                
-                {/* Tab content */}
-                <div className="flex-1 overflow-y-auto p-4">
-                  {activeTab === 'metadata' && (
-                    <MetadataExtractor document={selectedDocument} />
-                  )}
-                  
-                  {activeTab === 'validation' && (
-                    <ContentValidator document={selectedDocument} />
-                  )}
-                  
-                  {activeTab === 'preview' && (
-                    <DocumentPreview document={selectedDocument} />
-                  )}
-                  
-                  {activeTab === 'tags' && (
-                    <TagManager documentId={selectedDocument.id} />
-                  )}
-                  
-                  {activeTab === 'categories' && (
-                    <CategoryManager documentId={selectedDocument.id} />
-                  )}
-                </div>
               </div>
-            ) : (
-              <div className="h-full flex items-center justify-center p-8 text-center">
-                <div>
-                  <FiFile className="mx-auto text-gray-300 mb-3" size={48} />
-                  <h3 className="text-xl font-medium text-gray-500 mb-1">No Document Selected</h3>
-                  <p className="text-gray-400">
-                    Select a document from the list to view its details
-                  </p>
-                </div>
+              
+              {/* Tab navigation */}
+              <div className="flex border-b border-gray-200">
+                <button
+                  className={`px-2 py-1.5 text-sm font-medium ${activeTab === 'metadata' ? 'border-b-2 border-[#182241] text-[#182241]' : 'text-gray-500 hover:text-gray-700'}`}
+                  onClick={() => setActiveTab('metadata')}
+                >
+                  <FiInfo size={12} className="inline mr-1" />
+                  Metadata
+                </button>
+                <button
+                  className={`px-2 py-1.5 text-sm font-medium ${activeTab === 'validation' ? 'border-b-2 border-[#182241] text-[#182241]' : 'text-gray-500 hover:text-gray-700'}`}
+                  onClick={() => setActiveTab('validation')}
+                >
+                  <FiCheckSquare size={12} className="inline mr-1" />
+                  Validation
+                </button>
+                <button
+                  className={`px-2 py-1.5 text-sm font-medium ${activeTab === 'preview' ? 'border-b-2 border-[#182241] text-[#182241]' : 'text-gray-500 hover:text-gray-700'}`}
+                  onClick={() => setActiveTab('preview')}
+                >
+                  <FiEye size={12} className="inline mr-1" />
+                  Preview
+                </button>
+                <button
+                  className={`px-2 py-1.5 text-sm font-medium ${activeTab === 'tags' ? 'border-b-2 border-[#182241] text-[#182241]' : 'text-gray-500 hover:text-gray-700'}`}
+                  onClick={() => setActiveTab('tags')}
+                >
+                  <FiTag size={12} className="inline mr-1" />
+                  Tags
+                </button>
+                <button
+                  className={`px-2 py-1.5 text-sm font-medium ${activeTab === 'categories' ? 'border-b-2 border-[#182241] text-[#182241]' : 'text-gray-500 hover:text-gray-700'}`}
+                  onClick={() => setActiveTab('categories')}
+                >
+                  <FiFolder size={12} className="inline mr-1" />
+                  Categories
+                </button>
               </div>
-            )}
-          </div>
+              
+              {/* Tab content */}
+              <div className="flex-1 overflow-y-auto p-4">
+                {activeTab === 'metadata' && (
+                  <MetadataExtractor document={selectedDocument} />
+                )}
+                
+                {activeTab === 'validation' && (
+                  <ContentValidator document={selectedDocument} />
+                )}
+                
+                {activeTab === 'preview' && (
+                  <DocumentPreview document={selectedDocument} />
+                )}
+                
+                {activeTab === 'tags' && (
+                  <TagManager documentId={selectedDocument.id} />
+                )}
+                
+                {activeTab === 'categories' && (
+                  <CategoryManager documentId={selectedDocument.id} />
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-md h-full flex items-center justify-center">
+              <div className="text-center p-8">
+                <FiFile className="mx-auto mb-4 text-gray-300" size={48} />
+                <p className="text-gray-500">Select a document to view details</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       
@@ -705,6 +1112,104 @@ const DocumentsPage: React.FC = () => {
             />
           </div>
         </div>
+      )}
+
+      {/* Edit Document Modal */}
+      {isEditModalOpen && documentToEdit && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
+          onClick={(e) => {
+            // Close when clicking on the backdrop (not on the content)
+            if (e.target === e.currentTarget) {
+              setIsEditModalOpen(false);
+            }
+          }}
+        >
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <DocumentEditor
+              document={documentToEdit}
+              onClose={() => setIsEditModalOpen(false)}
+              onSave={(updatedDoc) => {
+                setIsEditModalOpen(false);
+                setDocumentToEdit(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
+      
+      {/* Delete Confirmation Modal */}
+      {isDeleteConfirmOpen && documentToDelete && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-[100] bg-black bg-opacity-50"
+          onClick={(e) => {
+            // Close when clicking on the backdrop (not on the content)
+            if (e.target === e.currentTarget) {
+              setIsDeleteConfirmOpen(false);
+              setDocumentToDelete(null);
+            }
+          }}
+        >
+          <div onClick={e => e.stopPropagation()} className="w-full max-w-md mx-auto px-4">
+            <DeleteConfirmation 
+              documentId={documentToDelete.id}
+              documentName={documentToDelete.name}
+              onClose={() => {
+                console.log('Delete confirmation closed');
+                setIsDeleteConfirmOpen(false);
+                setDocumentToDelete(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
+      
+      {/* Version History Modal */}
+      {isVersionHistoryOpen && selectedDocument && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
+          onClick={(e) => {
+            // Close when clicking on the backdrop (not on the content)
+            if (e.target === e.currentTarget) {
+              setIsVersionHistoryOpen(false);
+            }
+          }}
+        >
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <VersionHistory
+              document={selectedDocument}
+              onClose={() => setIsVersionHistoryOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+      
+      {/* Metadata Preferences Modal */}
+      {isMetadataPrefsOpen && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
+          onClick={(e) => {
+            // Close when clicking on the backdrop (not on the content)
+            if (e.target === e.currentTarget) {
+              setIsMetadataPrefsOpen(false);
+            }
+          }}
+        >
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <MetadataPreferences
+              onClose={() => setIsMetadataPrefsOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Batch operations */}
+      {batchOperationMode && selectedDocumentIds.length > 0 && (
+        <BatchOperations
+          availableTags={availableTags}
+          availableCategories={availableCategories}
+          onCancel={toggleBatchMode}
+        />
       )}
     </div>
   );

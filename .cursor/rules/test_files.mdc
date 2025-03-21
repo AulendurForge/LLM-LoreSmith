@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+When creating new functionality between the frontend and backend, make sure to reference the project structure for where test scripts are maintained and either update the appropriate existing test script for the new or modified functionality that you've implemented or create new test scripts as needed. If you've created a new test script, update the project structure to capture where this script is located and what it tests. [project_structure.md](mdc:project_structure.md)

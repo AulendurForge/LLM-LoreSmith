@@ -1,4 +1,9 @@
 ---
+description: 
+globs: 
+alwaysApply: false
+---
+---
 description: When managing frontend application styling and formatting, always be sure to review the main style and formatting files to keep styles as centrally managed as possible
 globs: /frontend
 alwaysApply: true

@@ -1,5 +1,5 @@
 import apiClient from './client';
-import { Document } from '../store/slices/documentsSlice';
+import { Document, DocumentVersion } from '../store/slices/documentsSlice';
 
 // API endpoints
 const DOCUMENTS_ENDPOINT = '/documents';
@@ -21,6 +21,12 @@ interface DocumentListResponse {
 // Interface for document metadata response
 interface DocumentMetadataResponse {
   metadata: Document['metadata'];
+  message: string;
+}
+
+// Interface for document update response
+interface DocumentUpdateResponse {
+  document: Document;
   message: string;
 }
 
@@ -73,12 +79,45 @@ export const updateDocumentMetadata = async (id: string, metadata: Partial<Docum
   return response.data;
 };
 
-// Delete a document
-export const deleteDocument = async (id: string) => {
-  const response = await apiClient.delete<{ message: string }>(
-    `${DOCUMENTS_ENDPOINT}/${id}`
+// Update document (basic info)
+export const updateDocument = async (id: string, data: Partial<Pick<Document, 'name' | 'type'>>) => {
+  const response = await apiClient.patch<DocumentUpdateResponse>(
+    `${DOCUMENTS_ENDPOINT}/${id}`,
+    data
   );
   return response.data;
+};
+
+// Delete a document
+export const deleteDocument = async (id: string) => {
+  try {
+    console.log(`Sending delete request to: ${DOCUMENTS_ENDPOINT}/${id}`);
+    const response = await apiClient.delete<{ message: string }>(
+      `${DOCUMENTS_ENDPOINT}/${id}`
+    );
+    console.log('Delete document response:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error(`Error deleting document with ID ${id}:`, error);
+    
+    // Format error response for easier handling
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+      
+      // If document not found, provide a clearer error
+      if (error.response.status === 404) {
+        const err = new Error('Document not found on server');
+        err.name = 'DocumentNotFoundError';
+        // Add the response data to the error
+        (err as any).response = error.response;
+        (err as any).status = 404;
+        throw err;
+      }
+    }
+    
+    throw error;
+  }
 };
 
 // Process a document (start extraction)
@@ -93,6 +132,65 @@ export const processDocument = async (id: string) => {
 export const getDocumentStatus = async (id: string) => {
   const response = await apiClient.get<{ status: Document['status']; progress: number }>(
     `${DOCUMENTS_ENDPOINT}/${id}/status`
+  );
+  return response.data;
+};
+
+// Get document versions
+export const getDocumentVersions = async (id: string) => {
+  const response = await apiClient.get<{ versions: DocumentVersion[], currentVersion: number }>(
+    `${DOCUMENTS_ENDPOINT}/${id}/versions`
+  );
+  return response.data;
+};
+
+// Create a new document version
+export const createDocumentVersion = async (
+  id: string, 
+  file?: File, 
+  changes?: string
+) => {
+  const formData = new FormData();
+  
+  if (file) {
+    formData.append('file', file);
+  }
+  
+  if (changes) {
+    formData.append('changes', changes);
+  }
+  
+  const response = await apiClient.post<{ version: DocumentVersion }>(
+    `${DOCUMENTS_ENDPOINT}/${id}/versions`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }
+  );
+  
+  return response.data;
+};
+
+// Restore a document version
+export const restoreDocumentVersion = async (
+  documentId: string,
+  versionId: string
+) => {
+  const response = await apiClient.post<{ version: DocumentVersion }>(
+    `${DOCUMENTS_ENDPOINT}/${documentId}/versions/${versionId}/restore`
+  );
+  return response.data;
+};
+
+// Delete a document version
+export const deleteDocumentVersion = async (
+  documentId: string,
+  versionId: string
+) => {
+  const response = await apiClient.delete<{ message: string }>(
+    `${DOCUMENTS_ENDPOINT}/${documentId}/versions/${versionId}`
   );
   return response.data;
 }; 

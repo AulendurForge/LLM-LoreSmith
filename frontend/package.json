@@ -4,17 +4,18 @@
   "private": true,
   "description": "Frontend for LLM LoreSmith - A system for fine-tuning LLMs with trusted documents",
   "scripts": {
-    "start": "vite",
-    "build": "tsc && vite build",
+    "dev": "vite",
+    "build": "vite build",
     "serve": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint --ext .js,.jsx,.ts,.tsx src",
+    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint --ext .js,.jsx,.ts,.tsx src --fix",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,css,scss}\"",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",

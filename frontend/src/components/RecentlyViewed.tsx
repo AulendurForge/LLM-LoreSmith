@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Link } from 'react-router-dom';
 import { FiClock, FiEye, FiChevronRight, FiX, FiFile } from 'react-icons/fi';
 import { selectDocument, Document as DocType } from '../store/slices/documentsSlice';
 
